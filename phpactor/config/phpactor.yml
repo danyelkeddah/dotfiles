@@ -1,0 +1,4 @@
+code_transform.class_new.variants:
+  laravel-test: laravel-test
+  laravel-resource: laravel-resource
+  laravel-action: laravel-action

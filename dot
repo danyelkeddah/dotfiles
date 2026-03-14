@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export DOT_RUNNER=1
+export DOTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+filter="*"
+
+source "$DOTS/_shared/os.sh"
+
+# ensure secrets file exists so any package can safely reference it
+# populated later
+[ -f "$SECRETS_FILE" ] || touch "$SECRETS_FILE"
+chmod 600 "$SECRETS_FILE"
+
+export -f log_ok log_err log_info log_header is_macos is_arch is_ubuntu symlink upsert_secret remove_secret
+
+COMPLETED=()
+
+get_packages() {
+  find "$DOTS" \
+    -maxdepth 2 \
+    -mindepth 2 \
+    -path "*/$filter*/setup.sh" \
+    | grep -v "$DOTS/_shared/" \
+    | sed 's|/setup.sh||' \
+    | sort
+}
+
+get_secret_scripts() {
+  local script="$1"
+  find "$DOTS" \
+    -maxdepth 2 \
+    -mindepth 2 \
+    -name "$script" \
+    -path "*/$filter*/$script" \
+    | grep -v "$DOTS/_shared/" \
+    | sort
+}
+
+run_pkg() {
+  local dir="$1"
+  local name
+  name="$(basename "$dir")"
+
+  if [[ " ${COMPLETED[*]} " == *" $name "* ]]; then
+    return 0  # silent — parent will print the skipping notice
+  fi
+
+  IN_PROGRESS+=("$name")
+
+  local deps=()
+  local deps_line
+  deps_line=$(grep "^DEPS=" "$dir/setup.sh" 2>/dev/null | head -1 || true)
+  if [ -n "$deps_line" ]; then
+    read -ra deps <<< "$(echo "$deps_line" | sed 's/^DEPS=(\(.*\))/\1/')"
+  fi
+
+  # pass 1 — run deps that haven't completed yet (before header, with own headers)
+  for dep in "${deps[@]}"; do
+    if [[ " ${IN_PROGRESS[*]} " == *" $dep "* ]]; then
+      log_err "circular dep detected: $name → $dep"
+      exit 1
+    fi
+    if [[ " ${COMPLETED[*]} " != *" $dep "* ]]; then
+      run_pkg "$DOTS/$dep"
+    fi
+  done
+
+  log_header "$name"
+
+  # pass 2 — list already-done deps as skipping notices under this header
+  for dep in "${deps[@]}"; do
+    if [[ " ${COMPLETED[*]} " == *" $dep "* ]]; then
+      log_ok "$dep (already done — skipping)"
+    fi
+  done
+
+  COMPLETED+=("$name")
+  IN_PROGRESS=("${IN_PROGRESS[@]/$name}")
+
+  if ! bash "$dir/setup.sh"; then
+    log_err "$name failed"
+    return 1
+  fi
+  log_ok "$name done"
+}
+
+run_packages() {
+  while IFS= read -r pkg; do
+    run_pkg "$pkg"
+  done < <(get_packages)
+}
+
+list_packages() {
+  echo "Available packages:"
+  while IFS= read -r pkg; do
+    echo " • $(basename "$pkg")"
+  done < <(get_packages)
+}
+
+run_sync_secrets() {
+  while IFS= read -r pkg; do
+    [ -f "$pkg/sync-secrets.sh" ] || continue
+    local name
+    name="$(basename "$pkg")"
+    log_header "$name"
+    if ! bash "$pkg/sync-secrets.sh"; then
+      log_err "$name failed"
+      return 1
+    fi
+    log_ok "$name done"
+  done < <(get_packages)
+}
+
+run_remove_secrets() {
+  while IFS= read -r pkg; do
+    [ -f "$pkg/remove-secrets.sh" ] || continue
+    local name
+    name="$(basename "$pkg")"
+    log_header "$name"
+    if ! bash "$pkg/remove-secrets.sh"; then
+      log_err "$name failed"
+      return 1
+    fi
+    log_ok "$name done"
+  done < <(get_packages)
+}
+
+case "${1:-}" in
+  --list)          list_packages;  exit 0 ;;
+  --sync-secrets)
+  if [ -z "${2:-}" ]; then
+    filter="*"
+    run_sync_secrets
+  else
+    for arg in "${@:2}"; do
+      filter="$arg"
+      run_sync_secrets
+    done
+  fi
+  exit 0
+  ;;
+--remove-secrets)
+  if [ -z "${2:-}" ]; then
+    filter="*"
+    run_remove_secrets
+  else
+    for arg in "${@:2}"; do
+      filter="$arg"
+      run_remove_secrets
+    done
+  fi
+  exit 0
+  ;;
+  --brew-dump)
+    log_info "dumping brew state to Brewfile..."
+    brew bundle dump --force --file="$DOTS/packages/Brewfile"
+    log_ok "Brewfile updated at $DOTS/packages/config/Brewfile"
+    exit 0
+    ;;
+  --brew-cleanup)
+    log_info "removing packages not in Brewfile..."
+    brew bundle cleanup --force --file="$DOTS/packages/config/Brewfile"
+    log_ok "cleanup done"
+    exit 0
+    ;;
+  --help)
+    echo "Usage: dot [package...] [--list] [--sync-secrets] [--brew-dump] [--brew-cleanup] [--help]"
+    echo ""
+    echo "  dot                    → run all packages"
+    echo "  dot tmux zsh           → run specific packages"
+    echo "  dot --list             → list available packages"
+    echo "  dot --sync-secrets     → sync secrets from 1Password"
+    echo "  dot --brew-dump        → dump installed brew packages to Brewfile"
+    echo "  dot --brew-cleanup     → remove packages not in Brewfile"
+    list_packages
+    exit 0
+    ;;
+    *)
+    if [ $# -eq 0 ]; then
+      run_packages
+    else
+      for arg in "$@"; do
+        filter="$arg"
+        run_packages
+      done
+    fi
+    ;;
+esac
+

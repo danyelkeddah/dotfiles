@@ -1,0 +1,22 @@
+<?php
+
+namespace {{ prototype.namespace }};
+
+use Illuminate\Foundation\Http\FormRequest;
+
+{% for class in prototype.classes %}
+class {{ class.name }} extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+
+        ];
+    }
+}
+{% endfor %}

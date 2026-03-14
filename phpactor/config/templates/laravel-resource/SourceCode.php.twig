@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ prototype.namespace }};
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+{% for class in prototype.classes %}
+/** @mixin \App\Models\{{ class.name|replace({'Resource': ''}) }} */
+class {{ class.name }} extends JsonResource
+{
+
+  /**
+   * Transform the resource into an array.
+   *
+   * @return array<string, mixed>
+   */
+    public function toArray(Request $request)
+    {
+        return [
+            
+        ];
+    }
+}
+
+{% endfor %}

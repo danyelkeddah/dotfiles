@@ -1,0 +1,44 @@
+{
+  "name": "snippets",
+  "engines": {
+    "vscode": "^1.11.0"
+  },
+  "languages": [
+    {
+      "id": "all",
+      "extensions": "*"
+    }
+  ],
+  "contributes": {
+    "snippets": [
+      {
+        "language": [
+          "all"
+        ],
+        "path": "./all.json"
+      },
+      {
+        "language": [
+          "php"
+        ],
+        "path": "./php.json"
+      },
+      {
+        "language": [
+          "typescript"
+        ],
+        "path": "./ts.json"
+      },
+      {
+        "language": [
+          "javascript",
+          "javascriptreact",
+          "vue",
+          "typescript",
+          "typescriptreact"
+        ],
+        "path": "./js.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "Import Items": {
+    "prefix": ["importitems"],
+    "body": ["import $0 from \"${1}\""],
+    "description": "Import items"
+  },
+  "export default": {
+    "prefix": ["ed"],
+    "body": ["export default ${1}{ \n \t${0} \n} "],
+    "description": "export default"
+  }
+}

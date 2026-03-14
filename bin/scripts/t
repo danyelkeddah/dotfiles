@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# Credit to ThePrimeagen
+
+if [[ $# -eq 1 ]]; then
+    selected=$1
+else
+  selected=$(find ~/Dev -mindepth 2 -maxdepth 2 -type d | gum filter --placeholder "search for project..." )
+    # items=`find ~/Dev -maxdepth 2 -mindepth 2 -type d`
+    # items+=`echo -e "\n/tmp"`
+    # selected=`echo "$items" | fzf`
+fi
+#
+if [[ -z $selected ]]; then
+    exit 0
+fi
+
+selected_name=$(basename "$selected" | tr . _)
+tmux_running=$(pgrep tmux)
+# dirname=`basename "$selected" | sed 's/\./_/g'`
+
+if [[ -z $TMUX ]] && [[ -z $tmux_running ]]; then
+    tmux new-session -s "$selected_name" -c "$selected"
+    exit 0
+fi
+
+if ! tmux has-session -t=$selected_name 2> /dev/null; then
+    tmux new-session -ds "$selected_name" -c "$selected"
+fi
+
+tmux switch-client -t "$selected_name"
+
+# tmux switch-client -t ="$dirname"
+# if [[ $? -eq 0 ]]; then
+#     exit 0
+# fi
+#
+# tmux new-session -c "$selected" -d -s "$dirname" && tmux switch-client -t "$dirname" || tmux new -c "$selected" -A -s "$dirname"
+

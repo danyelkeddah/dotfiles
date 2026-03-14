@@ -1,0 +1,16 @@
+{
+  "Tanstack Mutation": {
+    "prefix": ["tsmut"],
+    "description": "Tanstack Mutation",
+    "body": [
+      "const use${1}Mutation = () => {",
+      "\treturn useMutation<>({",
+      "\t\tmutationKey: [${2}],",
+      "\t\t mutationFn: ${3},",
+      "\t\tretry: 0,",
+      "\t})",
+      "}",
+      "export default use${1}Mutation;"
+    ]
+  }
+}
