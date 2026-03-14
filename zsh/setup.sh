@@ -50,6 +50,14 @@ elif is_arch; then
 fi
 
 
+
+# ── Symlinks ──────────────────────────────────────────────────────────────────
+
+log_info "symlinking zsh config..."
+symlink "$DOTS/zsh/config/.zshrc"      "$HOME/.zshrc"
+symlink "$DOTS/zsh/config/zsh"         "$HOME/.config/zsh"
+
+
 if [ ! -d "$HOME/.config/zsh/completions" ]; then
   log_info "cloning zsh-completions..."
   git clone https://github.com/zsh-users/zsh-completions.git "$HOME/.config/zsh/completions"
@@ -66,9 +74,3 @@ if [ ! -d "$HOME/.config/zsh/plugins/fzf-tab" ]; then
   log_info "updating fzf-tab..."
   git -C "$HOME/.config/zsh/plugins/fzf-tab" pull --force
 fi
-
-# ── Symlinks ──────────────────────────────────────────────────────────────────
-
-log_info "symlinking zsh config..."
-symlink "$DOTS/zsh/config/.zshrc"      "$HOME/.zshrc"
-symlink "$DOTS/zsh/config/zsh"         "$HOME/.config/zsh"

@@ -1,5 +1,5 @@
 export ZSH=$HOME/.config/zsh
-export DOTFILES=$HOME/dot
+export DOTFILES=$HOME/.dotfiles
 
 source $ZSH/config/path.zsh
 source $ZSH/config/defaults.zsh

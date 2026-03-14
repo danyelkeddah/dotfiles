@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DEPS=(homebrew ssh)
+DEPS=(homebrew)
 
 if is_macos; then
 
