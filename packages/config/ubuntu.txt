@@ -6,7 +6,6 @@ wget
 bat
 btop
 htop
-fzf
 fd-find
 ripgrep
 jq

@@ -1,25 +1,67 @@
 #!/usr/bin/env bash
 
-DEPS=(homebrew)
+DEPS=(homebrew packages)
 
-if is_macos; then
-
-  if ! command -v git &>/dev/null; then
-    log_info "installing git tools..."
-    brew install git diff-so-fancy lazygit git-quick-stats
-  else
-    log_info "git already installed — skipping"
+if ! command -v git &>/dev/null; then
+  log_info "installing git..."
+  if is_macos;    then brew install git
+  elif is_arch;   then sudo pacman -S --needed --noconfirm git
+  elif is_ubuntu; then sudo apt install -y git
   fi
-
-
-  if ! ssh-keygen -F github.com &>/dev/null; then
-    log_info "adding github.com to known hosts..."
-    mkdir -p "$HOME/.ssh"
-    ssh-keyscan -t rsa github.com >> "$HOME/.ssh/known_hosts"
-    log_ok "github.com added to known hosts"
   else
-    log_info "github.com already in known hosts — skipping"
+  log_info "git already installed — skipping"
+fi
+
+if ! command -v diff-so-fancy &>/dev/null; then
+  log_info "installing diff-so-fancy..."
+  if is_macos;    then brew install diff-so-fancy
+  elif is_arch;   then yay -S --needed --noconfirm diff-so-fancy
+  elif is_ubuntu; then
+    sudo add-apt-repository -y ppa:aos1/diff-so-fancy
+    sudo apt update
+    sudo apt install diff-so-fancy
   fi
+else
+  log_info "diff-so-fancy already installed — skipping"
+fi
+
+if ! command -v lazygit &>/dev/null; then
+  log_info "installing lazygit..."
+  if is_macos;    then brew install lazygit
+  elif is_arch;   then yay -S --needed --noconfirm lazygit
+  elif is_ubuntu; then
+    lazygit_version=$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest \
+      | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/')
+    curl -fLo /tmp/lazygit.tar.gz \
+      "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${lazygit_version}_Linux_x86_64.tar.gz"
+    tar -xf /tmp/lazygit.tar.gz -C /tmp lazygit
+    sudo mv /tmp/lazygit /usr/local/bin/lazygit
+  fi
+else
+  log_info "lazygit already installed — skipping"
+fi
+
+if ! command -v git-quick-stats &>/dev/null; then
+  log_info "installing git-quick-stats..."
+  if is_macos;    then brew install git-quick-stats
+  elif is_arch;   then yay -S --needed --noconfirm git-quick-stats
+  elif is_ubuntu; then
+    curl -fLo /tmp/git-quick-stats \
+      "https://raw.githubusercontent.com/arzzen/git-quick-stats/master/git-quick-stats"
+    sudo mv /tmp/git-quick-stats /usr/local/bin/git-quick-stats
+    sudo chmod +x /usr/local/bin/git-quick-stats
+  fi
+else
+  log_info "git-quick-stats already installed — skipping"
+fi
+
+if ! ssh-keygen -F github.com &>/dev/null; then
+  log_info "adding github.com to known hosts..."
+  mkdir -p "$HOME/.ssh"
+  ssh-keyscan -t rsa github.com >> "$HOME/.ssh/known_hosts"
+  log_ok "github.com added to known hosts"
+else
+  log_info "github.com already in known hosts — skipping"
 fi
 
 log_info "symlinking git templates..."

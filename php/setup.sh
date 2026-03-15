@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 DEPS=(homebrew)
 
-if is_macos; then
-  log_info "tapping shivammathur/php..."
-  brew tap shivammathur/php
-
+if ! command -v php &>/dev/null; then
   log_info "installing php..."
-  brew install shivammathur/php/php
-
-  log_info "installing composer..."
-  brew install composer
+  if is_macos; then
+    brew tap shivammathur/php
+    brew install shivammathur/php/php
+  elif is_arch; then
+    sudo pacman -S --needed --noconfirm php
+  elif is_ubuntu; then
+    sudo add-apt-repository -y ppa:ondrej/php
+    sudo apt update
+    sudo apt install -y php
+  fi
+else
+  log_info "php already installed — skipping"
 fi
-
 
