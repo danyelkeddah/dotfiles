@@ -41,8 +41,6 @@ docker-compose
 ca-certificates
 gnupg
 subversion
-ctags
 imagemagick
 ffmpeg
 transmission-cli
-youtube-dl
