@@ -21,10 +21,4 @@ if is_macos; then
   log_info "symlinking phpactor config..."
   symlink "$DOTS/phpactor/config" "$HOME/.config/phpactor"
 
-  # # ── intelephense license ───────────────────────────────────────────────────
-  #
-  # log_info "writing intelephense license..."
-  # mkdir -p "$HOME/.config/intelephense"
-  # op read "op://Personal/Intelephense/license key" \
-  #   > "$HOME/.config/intelephense/licence.txt"
 fi
