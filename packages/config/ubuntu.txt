@@ -25,7 +25,6 @@ nmap
 mosh
 telnet
 dnsmasq
-iperf3
 openvpn
 golang-go
 nodejs
