@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-DEPS=(homebrew)
+DEPS=(homebrew packages)
 
 if is_macos; then
   if ! command -v zsh &>/dev/null; then

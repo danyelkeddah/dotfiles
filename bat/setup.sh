@@ -6,6 +6,12 @@ if is_macos; then
   brew install --cask bat
 fi
 
+if is_ubuntu; then
+  sudo apt install bat
+  mkdir -p ~/.local/bin
+  ln -s /usr/bin/batcat ~/.local/bin/bat
+fi
+
 
 log_info "downloading Catppuccin Mocha theme..."
 curl -fLo "$DOTS/bat/config/themes/Catppuccin Mocha.tmTheme" \
