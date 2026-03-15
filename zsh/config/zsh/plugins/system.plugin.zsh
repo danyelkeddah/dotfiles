@@ -12,6 +12,3 @@ alias cwd="pwd && pwd | pbcopy && echo 'Copied to clipboard 📁'"
 # TODO: Move this to k8s.plugins.zsh
 alias k="kubectl" 
 
-dot() {
-  bash $DOTFILES/dot "$@"
-}

@@ -154,7 +154,7 @@ case "${1:-}" in
   ;;
   --brew-dump)
     log_info "dumping brew state to Brewfile..."
-    brew bundle dump --force --file="$DOTS/packages/Brewfile"
+    brew bundle dump --force --file="$DOTS/packages/config/Brewfile"
     log_ok "Brewfile updated at $DOTS/packages/config/Brewfile"
     exit 0
     ;;
