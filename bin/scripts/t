@@ -5,8 +5,8 @@
 if [[ $# -eq 1 ]]; then
     selected=$1
 else
-  selected=$(find ~/Dev -mindepth 2 -maxdepth 2 -type d | gum filter --placeholder "search for project..." )
-    # items=`find ~/Dev -maxdepth 2 -mindepth 2 -type d`
+  selected=$(find ~/dev -mindepth 2 -maxdepth 2 -type d | gum filter --placeholder "search for project..." )
+    # items=`find ~/dev -maxdepth 2 -mindepth 2 -type d`
     # items+=`echo -e "\n/tmp"`
     # selected=`echo "$items" | fzf`
 fi
