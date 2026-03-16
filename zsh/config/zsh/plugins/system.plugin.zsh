@@ -14,7 +14,6 @@ if command -v trash &>/dev/null; then
   rm() { trash "$@"; }
   rf() { trash -rf "$@"; }
 else
-  log_warn "trash not installed — using system rm (no recovery possible)"
   rf() { command rm -rf "$@"; }
 fi
 
