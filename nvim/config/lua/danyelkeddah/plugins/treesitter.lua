@@ -6,13 +6,13 @@ return {
     build = ':TSUpdate',
     dependencies = {
         'windwp/nvim-ts-autotag',
-        'nvim-treesitter/nvim-treesitter-textobjects',
+        -- { 'nvim-treesitter/nvim-treesitter-textobjects', after = 'nvim-treesitter' },
         { 'whatyouhide/vim-textobj-xmlattr', dependencies = 'kana/vim-textobj-user' },
         { 'JoosepAlviste/nvim-ts-context-commentstring', opts = { enable_autocmd = false } },
-        { 'nvim-treesitter/playground', cmd = { 'TSPlaygroundToggle', 'TSHighlightCapturesUnderCursor' } },
     },
     config = function()
-        require('nvim-treesitter.configs').setup({
+        require('nvim-treesitter.config').setup({
+            install_dir = vim.fn.stdpath('data') .. '/treesitter',
             auto_install = true,
             ignore_install = {},
             modules = {},
