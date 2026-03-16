@@ -12,7 +12,7 @@ source "$DOTS/_shared/os.sh"
 [ -f "$SECRETS_FILE" ] || touch "$SECRETS_FILE"
 chmod 600 "$SECRETS_FILE"
 
-export -f log_ok log_err log_info log_header is_macos is_arch is_ubuntu symlink upsert_secret remove_secret
+export -f log_ok log_err log_info log_warn log_header is_macos is_arch is_ubuntu symlink upsert_secret remove_secret
 
 COMPLETED=()
 
