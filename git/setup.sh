@@ -75,7 +75,11 @@ git config --global user.email                            "14123621+danyelkeddah
 git config --global user.signingkey                       "$HOME/.ssh/id_ed25519.pub"
 git config --global init.defaultBranch                    main
 git config --global gpg.format                            ssh
-git config --global gpg.ssh.program                       "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+if is_macos; then
+  git config --global gpg.ssh.program "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+else
+  git config --global gpg.ssh.program "ssh-keygen"
+fi
 git config --global gpg.ssh.allowedSignersFile            "$HOME/.config/git/allowed_signers"
 git config --global core.editor                           nvim
 git config --global core.excludesfile                     "$HOME/.config/git/templates/gitignore_global"
