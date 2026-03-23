@@ -1,6 +1,7 @@
 return {
     'rest-nvim/rest.nvim',
     ft = 'http',
+    build = false,
     dependencies = {
         'nvim-treesitter/nvim-treesitter',
         opts = function(_, opts)
