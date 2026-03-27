@@ -9,6 +9,7 @@ htop
 fd-find
 ripgrep
 jq
+just
 yq
 tree
 ncdu
