@@ -1,32 +1,38 @@
-export PATH=/usr/local/sbin:$PATH
+# Note: /opt/homebrew/bin and /opt/homebrew/sbin are added automatically
+# by macOS via /usr/libexec/path_helper (reads from /etc/paths.d/)
 
-export PATH=/usr/local/bin:$PATH
+# Ensure Homebrew system paths are available (Intel Mac locations)
+[ -d "/usr/local/sbin" ] && export PATH=/usr/local/sbin:$PATH
+[ -d "/usr/local/bin" ] && export PATH=/usr/local/bin:$PATH
 
-# Load Composer tools
-export PATH=$HOME/.composer/vendor/bin:$PATH
+# PHP Composer — globally installed packages (e.g. phpstan, laravel installer)
+[ -d "$HOME/.composer/vendor/bin" ] && export PATH=$HOME/.composer/vendor/bin:$PATH
 
-# Load Node global installed binaries
-export PATH=$HOME/.node/bin:$PATH
+# Node — globally installed packages via npm/yarn
+[ -d "$HOME/.node/bin" ] && export PATH=$HOME/.node/bin:$PATH
 
-# Use project specific binaries before global ones
-export PATH=node_modules/.bin:vendor/bin:$PATH
+# Project-local binaries — disabled due to security risk (relative paths resolve from cwd)
+# Use npx for Node or ./vendor/bin/ for PHP instead
+# export PATH=node_modules/.bin:vendor/bin:$PATH
 
-# bin
-export PATH=$HOME/bin:$PATH
-export PATH=$HOME/.local/bin:$PATH # for brew
-#echo $ZSH export PATH=$DOTFILES/bin:$PATH
+# User scripts and binaries (~/.local/bin is the XDG convention, ~/bin is the legacy fallback)
+[ -d "$HOME/bin" ] && export PATH=$HOME/bin:$PATH
+[ -d "$HOME/.local/bin" ] && export PATH=$HOME/.local/bin:$PATH
 
-# python
-export PATH=$HOME/Library/Python/2.7/bin:$PATH
-
-# GO
-export GOPATH=$HOME/.go
-if command -v brew &>/dev/null; then
-  export GOROOT="$(brew --prefix golang)/libexec"
+# Go — workspace for packages and compiled binaries, uses go env for portability across platforms
+export GOPATH="$HOME/.go"
+if command -v go &>/dev/null; then
+  export GOROOT="$(go env GOROOT)"
   export PATH=$PATH:$GOROOT/bin
 fi
-export PATH=$PATH:$GOPATH/bin
+[ -d "$GOPATH/bin" ] && export PATH=$PATH:$GOPATH/bin
 
-# fzf
+# pnpm — fast Node package manager, stores global binaries in ~/.local/share/pnpm
+export PNPM_HOME="${HOME}/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+
+# fzf — open selected file in VS Code with ctrl-o
 export FZF_DEFAULT_OPTS="--bind='ctrl-o:execute(code {})+abort'"
-
