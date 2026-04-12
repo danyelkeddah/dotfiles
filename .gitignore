@@ -45,3 +45,28 @@ Temporary Items
 
 zsh/config/zsh/plugins/fzf-tab
 zsh/config/zsh/completions
+
+### Secrets (belt-and-suspenders) ###
+*.env
+.env.*
+.envrc
+.secrets.zsh
+*.pem
+*.key
+*.p12
+*.pfx
+*.kdbx
+.netrc
+.pgpass
+credentials
+credentials.*
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+id_ecdsa
+id_ecdsa.*
+id_dsa
+id_dsa.*
+known_hosts
+authorized_keys
