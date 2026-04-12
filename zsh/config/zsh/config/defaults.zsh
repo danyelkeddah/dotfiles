@@ -39,6 +39,14 @@ bindkey '^R' history-incremental-search-backward
 bindkey '^P' history-search-backward
 bindkey '^N' history-search-forward
 
+# Edit current command line in $EDITOR with ctrl-x ctrl-e
+autoload -Uz edit-command-line
+zle -N edit-command-line
+bindkey '^x^e' edit-command-line
+
+# Expand history references (e.g. !!, !$) inline when pressing space
+bindkey ' ' magic-space
+
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 # disable sort when completing `git checkout`
