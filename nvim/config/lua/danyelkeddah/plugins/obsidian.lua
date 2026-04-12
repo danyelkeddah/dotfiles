@@ -44,14 +44,14 @@ return {
             return tostring(os.time()) .. '-' .. suffix
         end,
         templates = {
-            folder = 'misc/templates',
+            -- folder = 'misc/templates',
             date_format = '%Y-%m-%d',
             time_format = '%H:%M',
         },
         workspaces = {
             {
-                name = 'second-brain',
-                path = '~/second-brain',
+                name = 'brain',
+                path = '~/brain',
             },
         },
         notes_subdir = 'notes',
