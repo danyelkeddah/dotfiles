@@ -25,11 +25,3 @@ export NVM_DIR="$HOME/.nvm"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
-
-# pnpm
-export PNPM_HOME="/home/danyelkeddah/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-# pnpm end
