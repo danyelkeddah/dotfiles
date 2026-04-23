@@ -1,111 +1,91 @@
-local icons = require('danyelkeddah.icons')
-vim.g.mapleader = ' '
-vim.g.maplocalleader = ' '
-vim.g.autoformat = true
-vim.g.root_spec = { 'lsp', { '.git', 'lua' }, 'cwd' }
+-- Leader
+vim.g.mapleader = ' ' -- use Space as the global leader key
+vim.g.maplocalleader = ' ' -- use Space as the buffer-local leader key
 
--- vim.opt.autowrite = true -- autosave
-vim.opt.clipboard = 'unnamedplus'
-vim.opt.completeopt = 'menu,menuone,noinsert,noselect'
-vim.opt.conceallevel = 2 -- Hide * markup for bold and italic, but not markers with substitutions
--- vim.opt.conceallevel = 0
-vim.opt.confirm = true
-vim.opt.cursorline = true
-vim.opt.expandtab = true -- use spaces instead of tabs
-vim.opt.formatoptions = 'jcroqlnt' -- tcqj
-vim.opt.grepformat = '%f:%l:%c:%m'
-vim.opt.grepprg = 'rg --vimgrep'
-vim.opt.ignorecase = true
-vim.opt.inccommand = 'nosplit' -- preview incremental substitute
-vim.opt.laststatus = 3 -- global statusline
-vim.opt.list = true -- Show some invisible characters (tabs...
-vim.opt.mouse = 'a' -- Enable mouse mode
-vim.opt.number = true -- Print line number
-vim.opt.pumblend = 10 -- Popup blend
-vim.opt.pumheight = 10 -- Maximum number of entries in a popup
-vim.opt.relativenumber = true
---vim.opt.scrolloff = 4 -- Lines of context
-vim.opt.sessionoptions = { 'buffers', 'curdir', 'tabpages', 'winsize', 'help', 'globals', 'skiprtp', 'folds' }
-vim.opt.shiftround = true -- Round indent
-vim.opt.shiftwidth = 2
-vim.opt.shortmess:append({
-    W = true,
-    I = true,
-    c = true,
-    C = true,
-})
-vim.opt.showmode = false -- Dont show mode since we have a statusline
---vim.opt.sidescrolloff = 8 -- Columns of context
-vim.opt.signcolumn = 'yes:2' -- Always show the signcolumn, otherwise it would shift the text each time
-vim.opt.smartcase = true -- Don't ignore case with capitals
-vim.opt.smartindent = true -- Insert indents automatically
-vim.opt.spelllang = { 'en' }
-vim.opt.splitbelow = true
-vim.opt.splitright = true
-vim.opt.splitkeep = 'screen'
-vim.opt.tabstop = 4 -- Number of spaces tabs count for
-vim.opt.softtabstop = 2
-vim.opt.termguicolors = true
-vim.opt.timeoutlen = 300
-vim.opt.undofile = true
-vim.opt.undolevels = 10000
-vim.opt.updatetime = 200 -- Save swap file and trigger CursorHold
--- vim.opt.virtualedit = 'block' -- Allow cursor to move where there is no text in visual block mode
-vim.opt.wildmode = 'longest:full,full' -- Command-line completion mode
-vim.opt.winminwidth = 5 -- Minimum window width
-vim.opt.wrap = false -- Disable line wrap
-vim.opt.fillchars = {
-    foldopen = '',
-    foldclose = '',
-    -- fold = "⸱",
+-- UI
+vim.opt.termguicolors = true -- enable 24-bit RGB colors in the terminal
+vim.opt.cursorline = true -- highlight the screen line the cursor is on
+vim.opt.cursorlineopt = 'number' -- highlight only the line number, not the whole row
+vim.opt.number = true -- show absolute line numbers
+vim.opt.relativenumber = true -- show other line numbers relative to the cursor
+vim.opt.signcolumn = 'yes:2' -- always reserve 2 columns so text doesn't shift when signs appear
+vim.opt.showmode = false -- hide the default mode indicator (the statusline shows it)
+vim.opt.laststatus = 3 -- one global statusline across all splits
+vim.opt.pumblend = 10 -- make the completion popup slightly transparent
+vim.opt.pumheight = 10 -- cap the completion popup to 10 visible entries
+vim.opt.title = true -- set the terminal window title
+vim.opt.titlestring = 'vim (' .. vim.fn.substitute(vim.fn.getcwd(), '^.*/', '', '') .. ')' -- format: "vim (dirname)"
+vim.opt.list = true -- render invisible whitespace markers (see listchars)
+vim.opt.listchars = { tab = '▸ ', trail = '·' } -- glyphs for tab characters and trailing whitespace
+vim.opt.fillchars = { -- glyphs used for folds, diffs, empty lines, etc.
+    foldopen = '▾',
+    foldclose = '▸',
     fold = ' ',
     foldsep = ' ',
     diff = '╱',
-    eob = ' ',
+    eob = ' ', -- hide the ~ on empty lines below the buffer
 }
-if vim.fn.has('nvim-0.10') == 1 then
-    vim.opt.smoothscroll = true
-end
--- Fix markdown indentation settings
-vim.g.markdown_recommended_style = 0
-vim.g.vim_markdown_folding_disabled = 1
+vim.opt.smoothscroll = true -- scroll by screen line instead of jumping for wrapped lines
 
--- extras
-vim.opt.hidden = true
--- vim.opt.backupdir:remove('.')
-vim.opt.swapfile = false
-vim.opt.autoread = true
-vim.opt.encoding = 'utf-8'
-vim.opt.backspace = 'indent,eol,start'
-vim.opt.cursorlineopt = 'number'
-vim.opt.hlsearch = true
-vim.opt.title = true
-vim.opt.autoindent = true
-vim.opt.shada = { '!', "'1000", '<50', 's10', 'h' }
-vim.opt.redrawtime = 10000
-vim.opt.titlestring = 'vim (' .. vim.fn.substitute(vim.fn.getcwd(), '^.*/', '', '') .. ')'
-vim.opt.exrc = true
-vim.opt.secure = true
-vim.opt.cmdheight = 1
-vim.opt.listchars = { tab = '▸ ', trail = '·' }
+-- Indentation (tabs render as 4 columns, but actual indent is 2 spaces)
+vim.opt.expandtab = true -- insert spaces instead of literal tab characters
+vim.opt.shiftwidth = 2 -- spaces per indent level (used by >>, <<, auto-indent)
+vim.opt.tabstop = 4 -- columns a literal tab character displays as
+vim.opt.softtabstop = 2 -- spaces inserted when pressing <Tab> in insert mode
+vim.opt.shiftround = true -- round >> / << to the nearest multiple of shiftwidth
+vim.opt.smartindent = true -- auto-indent new lines based on syntax
 
-vim.g.skip_ts_context_commentstring_module = true
+-- Editing
+vim.opt.clipboard = 'unnamedplus' -- share yank/paste with the system clipboard
+vim.opt.confirm = true -- prompt on :q with unsaved changes instead of erroring
+vim.opt.conceallevel = 2 -- hide markers (bold/italic/etc.); markdown autocmd drops to 0 in insert mode
+vim.opt.formatoptions = 'jcroqlnt' -- auto-format rules for comments / text (see :h fo-table)
+vim.opt.mouse = 'a' -- enable mouse in all modes including command-line
+vim.opt.completeopt = 'menu,menuone,noinsert,noselect' -- show menu always, don't auto-insert or preselect
+vim.opt.timeoutlen = 300 -- ms to wait for a mapped key sequence to complete
+vim.opt.wrap = false -- do not visually wrap long lines
 
+-- Search
+vim.opt.ignorecase = true -- case-insensitive search by default
+vim.opt.smartcase = true -- ...except when the pattern contains uppercase letters
+vim.opt.grepprg = 'rg --vimgrep' -- use ripgrep for :grep
+vim.opt.grepformat = '%f:%l:%c:%m' -- how to parse file:line:col:message from ripgrep output
+vim.opt.wildmode = 'longest:full,full' -- cmdline completion: complete longest match, then show menu
+
+-- Splits
+vim.opt.splitbelow = true -- horizontal splits open below the current window
+vim.opt.splitright = true -- vertical splits open to the right of the current window
+vim.opt.splitkeep = 'screen' -- keep visible text fixed when creating a split (don't scroll)
+vim.opt.winminwidth = 5 -- minimum width a window can be resized to
+
+-- Persistence
+vim.opt.undofile = true -- persist undo history to disk across sessions
+vim.opt.undolevels = 10000 -- how many undo steps to keep in memory per buffer
+vim.opt.swapfile = false -- don't create .swp files
+vim.opt.sessionoptions = { 'buffers', 'curdir', 'tabpages', 'winsize', 'help', 'globals', 'skiprtp', 'folds' } -- what :mksession captures
+vim.opt.shada = { '!', "'1000", '<50', 's10', 'h' } -- ShaDa: remember 1000 marks instead of the default 100
+vim.opt.updatetime = 200 -- ms idle before CursorHold fires / swap writes
+vim.opt.redrawtime = 10000 -- ms budget for syntax redraw on long lines
+
+-- Misc
+vim.opt.shortmess:append({ W = true, I = true, c = true, C = true }) -- silence "written", intro, and completion noise
+vim.opt.exrc = true -- source project-local .nvim.lua (requires :trust per project)
+vim.g.markdown_recommended_style = 0 -- don't let runtime ftplugin/markdown.vim override tabstop/shiftwidth
+
+-- Diagnostics
 vim.diagnostic.config({
-    virtual_text = {
-        prefix = icons.diagnostics.Dot,
+    virtual_text = { -- inline message at the end of the offending line
+        prefix = '●',
         spacing = 4,
-        source = 'if_many',
+        source = 'if_many', -- show source name only when multiple sources disagree
     },
-    signs = {
+    signs = { -- per-severity icon in the signcolumn
         text = {
-            [vim.diagnostic.severity.ERROR] = icons.diagnostics.BoldError,
-            [vim.diagnostic.severity.WARN] = icons.diagnostics.BoldWarning,
-            [vim.diagnostic.severity.HINT] = icons.diagnostics.BoldHint,
-            [vim.diagnostic.severity.INFO] = icons.diagnostics.BoldInformation,
+            [vim.diagnostic.severity.ERROR] = '',
+            [vim.diagnostic.severity.WARN] = '',
+            [vim.diagnostic.severity.HINT] = '',
+            [vim.diagnostic.severity.INFO] = '',
         },
     },
-    underline = true,
-    update_in_insert = false,
-    severity_sort = true,
+    severity_sort = true, -- order diagnostics by severity (errors first)
 })

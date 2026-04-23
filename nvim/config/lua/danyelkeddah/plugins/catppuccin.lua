@@ -1,0 +1,21 @@
+require('catppuccin').setup({
+    integrations = {
+        telescope = { enabled = true },
+        blink_cmp = true,
+        lsp_trouble = true,
+        dadbod_ui = true,
+        which_key = true,
+        ufo = true,
+        notify = true,
+        nvim_surround = true,
+        treesitter_context = true,
+        diffview = true,
+        fidget = true,
+        harpoon = true,
+        markdown = true,
+        mason = true,
+        noice = true,
+        notifier = true,
+        native_lsp = { enabled = false },
+    },
+})

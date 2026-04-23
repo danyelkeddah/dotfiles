@@ -1,3 +1,1 @@
-return {
-    'folke/ts-comments.nvim',
-}
+require('ts-comments').setup()

@@ -1,7 +1,0 @@
-{
-  "rc": {
-    "prefix": ["rc"],
-    "description": "",
-    "body": ["const ${1} = () => {", "\t//${0}", "}", "export default ${1};"]
-  }
-}
