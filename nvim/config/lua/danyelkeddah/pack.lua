@@ -32,6 +32,7 @@ vim.pack.add({
     { src = 'https://github.com/j-hui/fidget.nvim' },
     { src = 'https://github.com/echasnovski/mini.ai' },
     { src = 'https://github.com/nvim-treesitter/nvim-treesitter' },
+    { src = 'https://github.com/nvim-treesitter/nvim-treesitter-textobjects', version = 'main' },
     { src = 'https://github.com/windwp/nvim-ts-autotag' },
     { src = 'https://github.com/folke/ts-comments.nvim' },
     { src = 'https://github.com/kana/vim-textobj-user' },
