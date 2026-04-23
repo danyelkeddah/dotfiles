@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+# Repair vim.pack plugin installs that ended up with only a .git/ directory
+# or with all files staged as deleted (a known symptom of interrupted clones).
+#
+# Usage:
+#   nvim-pack-fix            # scan and repair any broken plugin dirs
+#   nvim-pack-fix --dry-run  # just report what would be fixed
+
+set -euo pipefail
+
+pack_dir="${XDG_DATA_HOME:-$HOME/.local/share}/nvim/site/pack/core/opt"
+dry_run=0
+fixed=0
+skipped=0
+
+if [[ "${1:-}" == "--dry-run" || "${1:-}" == "-n" ]]; then
+    dry_run=1
+fi
+
+if [[ ! -d "$pack_dir" ]]; then
+    echo "No vim.pack directory at $pack_dir — nothing to do."
+    exit 0
+fi
+
+for plugin in "$pack_dir"/*/; do
+    name=$(basename "$plugin")
+
+    # Not a git repo — skip
+    if [[ ! -d "$plugin/.git" ]]; then
+        continue
+    fi
+
+    # Detect: no files other than .git/
+    non_git_entries=$(find "$plugin" -mindepth 1 -maxdepth 1 -not -name .git | wc -l | tr -d ' ')
+    empty=0
+    if [[ "$non_git_entries" == "0" ]]; then
+        empty=1
+    fi
+
+    # Detect: files staged as deleted (interrupted checkout)
+    deleted_staged=0
+    if git -C "$plugin" diff --cached --name-status 2>/dev/null | grep -q '^D'; then
+        deleted_staged=1
+    fi
+
+    if [[ "$empty" == "0" && "$deleted_staged" == "0" ]]; then
+        continue
+    fi
+
+    reason="empty checkout"
+    [[ "$deleted_staged" == "1" ]] && reason="staged-as-deleted files"
+
+    if [[ "$dry_run" == "1" ]]; then
+        echo "would fix: $name ($reason)"
+        skipped=$((skipped + 1))
+        continue
+    fi
+
+    echo "fixing: $name ($reason)"
+    rm -f "$plugin/.git/index.lock"
+    git -C "$plugin" restore --staged . >/dev/null 2>&1 || true
+    git -C "$plugin" restore . >/dev/null 2>&1 || true
+    fixed=$((fixed + 1))
+done
+
+if [[ "$dry_run" == "1" ]]; then
+    echo "would fix $skipped plugin(s) (dry-run)"
+else
+    echo "fixed $fixed plugin(s)"
+fi
