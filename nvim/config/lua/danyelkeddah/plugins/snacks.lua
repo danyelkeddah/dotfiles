@@ -19,6 +19,8 @@ vim.print = _G.dd -- make `:lua =foo` use snacks' pretty inspector
 
 local map = vim.keymap.set
 
+-- stylua: ignore start
+
 -- Utilities
 map('n', '<leader>bd', function() Snacks.bufdelete() end, { desc = 'Delete buffer' })
 map({ 'n', 'v' }, '<leader>gB', function() Snacks.gitbrowse() end, { desc = 'Git browse (open in browser)' })
@@ -37,7 +39,7 @@ map('n', '<leader>fb', function() Snacks.picker.buffers() end, { desc = 'Buffers
 map('n', '<leader>fc', function() Snacks.picker.files({ cwd = vim.fn.stdpath('config') }) end, { desc = 'Find config file' })
 
 -- Grep
-map('n', '<leader>/', function() Snacks.picker.gren() end, { desc = 'Grep (project)' })
+map('n', '<leader>/', function() Snacks.picker.grep() end, { desc = 'Grep (project)' })
 
 -- Search / discovery
 map('n', '<leader>sd', function() Snacks.picker.diagnostics() end, { desc = 'Diagnostics' })
@@ -55,3 +57,5 @@ map('n', 'gd', function() Snacks.picker.lsp_definitions() end, { desc = 'Goto de
 map('n', 'gr', function() Snacks.picker.lsp_references() end, { desc = 'References', nowait = true })
 map('n', 'gI', function() Snacks.picker.lsp_implementations() end, { desc = 'Goto implementation' })
 map('n', 'gy', function() Snacks.picker.lsp_type_definitions() end, { desc = 'Goto type definition' })
+
+-- stylua: ignore end
