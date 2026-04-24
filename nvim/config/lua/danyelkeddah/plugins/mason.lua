@@ -13,6 +13,7 @@ require('mason').setup({
 
 require('mason-tool-installer').setup({
     ensure_installed = {
+        -- formatters / linters
         'prettier',
         'stylua',
         'eslint_d',
@@ -22,9 +23,24 @@ require('mason-tool-installer').setup({
         'goimports',
         'gofumpt',
         'markdownlint',
-        'marksman',
         'typos',
         'hclfmt',
+        -- language servers
+        'ansible-language-server',
+        'css-lsp',
+        'dockerfile-language-server',
+        'docker-compose-language-service',
+        'emmet-ls',
+        'gopls',
+        'html-lsp',
+        'intelephense',
+        'json-lsp',
+        'lua-language-server',
+        'marksman',
+        'tailwindcss-language-server',
+        'terraform-ls',
+        'typescript-language-server',
+        'yaml-language-server',
     },
 })
 
