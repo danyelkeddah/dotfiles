@@ -21,5 +21,5 @@ return {
             },
         },
     },
-    filetypes = { 'yaml.ansible', 'yml.ansible', 'yaml' },
+    filetypes = { 'yaml' },
 }
