@@ -16,8 +16,27 @@ vim.lsp.enable({
     'yamlls',
 })
 
--- Filetypes whose semantic-token highlighting fights with treesitter; turn it off per client.
-local disable_semantic_tokens = {}
+vim.diagnostic.config({
+    severity_sort = true,
+    underline = { severity = vim.diagnostic.severity.ERROR },
+    virtual_text = {
+        spacing = 2,
+        prefix = '●',
+        source = 'if_many',
+    },
+    signs = {
+        text = {
+            [vim.diagnostic.severity.ERROR] = '✘',
+            [vim.diagnostic.severity.WARN] = '▲',
+            [vim.diagnostic.severity.HINT] = '⚑',
+            [vim.diagnostic.severity.INFO] = '»',
+        },
+    },
+    float = {
+        border = 'rounded',
+        source = 'if_many',
+    },
+})
 
 vim.api.nvim_create_autocmd('LspAttach', {
     group = vim.api.nvim_create_augroup('danyelkeddah_lsp_attach', { clear = true }),
@@ -25,6 +44,10 @@ vim.api.nvim_create_autocmd('LspAttach', {
         local bufnr = args.buf
         local client = assert(vim.lsp.get_client_by_id(args.data.client_id), 'must have a valid client')
         vim.bo[bufnr].omnifunc = 'v:lua.vim.lsp.omnifunc'
+
+        -- Formatting is delegated entirely to conform.nvim; strip the capability so no LSP ever formats.
+        client.server_capabilities.documentFormattingProvider = false
+        client.server_capabilities.documentRangeFormattingProvider = false
 
         local map = function(mode, lhs, rhs, desc, opts)
             opts = vim.tbl_extend('force', { buffer = bufnr, desc = desc }, opts or {})
@@ -47,8 +70,11 @@ vim.api.nvim_create_autocmd('LspAttach', {
             })
         end, 'Source Action')
 
-        if disable_semantic_tokens[vim.bo[bufnr].filetype] then
-            client.server_capabilities.semanticTokensProvider = nil
+        if client:supports_method('textDocument/inlayHint') then
+            vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+            map('n', '<leader>uh', function()
+                vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }), { bufnr = bufnr })
+            end, 'Toggle Inlay Hints')
         end
     end,
 })

@@ -6,10 +6,11 @@ lint.linters_by_ft = {
     javascriptreact = { 'eslint_d' },
     typescriptreact = { 'eslint_d' },
     dockerfile = { 'hadolint' },
-    markdown = { 'markdownlint' },
+    markdown = { 'markdownlint', 'typos' },
     terraform = { 'terraform_validate' },
     tf = { 'terraform_validate' },
-    ['*'] = { 'typos' },
+    gitcommit = { 'typos' },
+    text = { 'typos' },
 }
 
 vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'InsertLeave' }, {
