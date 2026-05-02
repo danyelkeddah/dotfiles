@@ -6,7 +6,7 @@ ZSH_THEME_GIT_PROMPT_SUFFIX="%{$fg[blue]%})%{$reset_color%} "
 
 function git_branch_name()
 {
-  branch=$(git symbolic-ref HEAD 2> /dev/null | awk 'BEGIN{FS="/"} {print $NF}')
+  branch=$(git symbolic-ref --short HEAD 2> /dev/null)
   if [[ $branch == "" ]];
   then
     :
