@@ -1,0 +1,43 @@
+{
+  "Public PHP Method": {
+    "prefix": ["met", "func"],
+    "body": ["public function ${1}(${2}): ${3:void}{", "\t${0}", "}"],
+    "description": "Public PHP Method"
+  },
+  "Protected PHP Method": {
+    "prefix": ["pmet", "func"],
+    "body": ["protected function ${1}(${2}): ${3:void}{", "\t${0}", "}"],
+    "description": "Protected PHP Method"
+  },
+  "Public Static Method": {
+    "prefix": ["smet"],
+    "body": ["public static function ${1}(${2}): ${3:void}{", "\t${0}", "}"],
+    "description": "Public Status PHP Method"
+  },
+  "Test Method": {
+    "prefix": ["tmet"],
+    "body": [
+      "/**",
+      "* @test",
+      "*/",
+      "public static function it_${1}(){",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Test Method"
+  },
+  "Constructor": {
+    "prefix": ["__c"],
+    "body": ["public function __construct($1){", "\t${0}", "}"],
+    "description": "PHP Constructor"
+  },
+  "Laravel Belongsto Relation": {
+    "prefix": ["lbelongs"],
+    "body": [
+      "public function ${1}(): BelongsTo {",
+      "\t\\$this->beglonsTo(${0});",
+      "}"
+    ],
+    "description": "Laravel BelongsTo Relation"
+  }
+}
