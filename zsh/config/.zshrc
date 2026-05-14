@@ -4,8 +4,8 @@ export DOTFILES=$HOME/.dotfiles
 source $ZSH/config/path.zsh
 source $ZSH/config/defaults.zsh
 
-# add completions
-fpath=($ZSH/completions/src $fpath)
+# add completions (upstream first; custom is additive for tools upstream doesn't ship)
+fpath=($ZSH/completions/src $ZSH/completions-custom $fpath)
 
 source $HOME/.secrets.zsh
 
