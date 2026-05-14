@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-DEPS=(homebrew packages)
+DEPS=(homebrew packages pnpm)
 
 if ! command -v hunk &>/dev/null; then
   log_info "installing hunk..."

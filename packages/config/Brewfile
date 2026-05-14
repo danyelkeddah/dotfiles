@@ -129,7 +129,6 @@ brew "pidof"
 brew "pipx"
 brew "pngpaste"
 brew "pngquant"
-brew "pnpm"
 brew "postgresql@17", restart_service: :changed, link: true
 brew "prettyping"
 brew "python@3.10"
