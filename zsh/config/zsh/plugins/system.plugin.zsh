@@ -1,4 +1,3 @@
-alias ssh='env TERM=xterm-256color ssh'
 
 alias c="clear"
 alias o="open ."

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+host="${1:-}"
+
+if [ -z "$host" ]; then
+  echo "Usage: $(basename "$0") user@host" >&2
+  exit 1
+fi
+
+if ! infocmp -x xterm-ghostty >/dev/null 2>&1; then
+  echo "xterm-ghostty terminfo not found locally" >&2
+  exit 1
+fi
+
+infocmp -x xterm-ghostty \
+  | awk 'NR == 2 { print "xterm-ghostty,"; next } { print }' \
+  | ssh "$host" 'mkdir -p ~/.terminfo && tic -x -'
