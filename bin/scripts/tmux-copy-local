@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+# Copy stdin to tmux buffer and to the local terminal clipboard via OSC 52.
+# Useful when tmux is running on a remote machine over SSH.
+
+buf=$(cat)
+
+# Keep tmux's own paste buffer working too.
+printf '%s' "$buf" | tmux load-buffer -
+
+# Send OSC 52 directly to the attached client terminal.
+# tmux expands TMUX_CLIENT_TTY from the key binding.
+if [ -n "$TMUX_CLIENT_TTY" ] && [ -w "$TMUX_CLIENT_TTY" ]; then
+  encoded=$(printf '%s' "$buf" | base64 | tr -d '\n')
+  printf '\033]52;c;%s\007' "$encoded" > "$TMUX_CLIENT_TTY"
+fi
