@@ -27,11 +27,15 @@ if command -v go &>/dev/null; then
 fi
 [ -d "$GOPATH/bin" ] && export PATH=$PATH:$GOPATH/bin
 
-# pnpm — fast Node package manager, stores global binaries in ~/.local/share/pnpm
+# pnpm — fast Node package manager, stores global binaries under ~/.local/share/pnpm
 export PNPM_HOME="${HOME}/.local/share/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+case ":$PATH:" in
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
 esac
 
 # fzf — open selected file in VS Code with ctrl-o
