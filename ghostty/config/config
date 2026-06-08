@@ -10,7 +10,8 @@ cursor-style = block
 mouse-hide-while-typing = true
 window-padding-balance = true
 window-save-state = always
-window-colorspace = "display-p3"
+# Keep terminal colors consistent over SSH/tmux; display-p3 can make themes look oversaturated/off.
+window-colorspace = "srgb"
 clipboard-read = allow
 clipboard-write = allow
 copy-on-select = true

@@ -1,4 +1,13 @@
 export CLICOLOR=1
+
+# Help CLI/TUI apps detect truecolor correctly on capable terminals.
+# Keep conditional so this cross-system config does not lie on older/basic terms.
+case "$TERM" in
+  xterm-ghostty|xterm-256color|tmux-256color|screen-256color)
+    export COLORTERM=truecolor
+    ;;
+esac
+
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 export MANPAGER="nvim +Man!"
