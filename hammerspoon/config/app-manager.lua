@@ -1,40 +1,25 @@
-local applications = {
-    WezTerm = {
-        id = "com.github.wez.wezterm",
-        key = "t",
-    },
-    Music = {
-        id = "com.apple.Music",
-        key = "m",
-    },
-    Slack = {
-        id = "com.tinyspeck.slackmacgap",
-        key = "s",
-    },
-    Discord = {
-        id = "com.hnc.Discord",
-        key = "d",
-    },
-    Obsidian = {
-        id = "md.obsidian",
-        key = "n",
-    },
-    Finder = {
-        id = "com.apple.finder",
-        key = "f",
-    },
-    Chrome = {
-        id = "com.google.Chrome",
-        key = "b",
-    },
-}
-
 local M = {}
 
-M.register = function()
-    for _, value in pairs(applications) do
-        hs.hotkey.bind(bigHyper, value.key, function()
-            hs.application.launchOrFocusByBundleID(value.id)
+local applications = require("apps")
+
+local function toggleApplication(application)
+    local frontmost = hs.application.frontmostApplication()
+    if frontmost and frontmost:bundleID() == application.bundleId then
+        frontmost:hide()
+        return
+    end
+
+    local opened = hs.application.launchOrFocusByBundleID(application.bundleId)
+    if not opened then
+        hs.alert.show("Could not open " .. application.name)
+    end
+end
+
+function M.register(modifiers)
+    for _, app in pairs(applications) do
+        local application = app
+        hs.hotkey.bind(modifiers, application.key, function()
+            toggleApplication(application)
         end)
     end
 end

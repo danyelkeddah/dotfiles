@@ -1,0 +1,44 @@
+;; Keyboard shortcuts
+;;
+;; Tap Caps Lock: Escape
+;; Hold Caps Lock: Ctrl+Alt+Shift for Hammerspoon shortcuts
+;; Press F1-F12: normal Mac controls such as brightness and volume
+;; Hold Fn and press F1-F12: standard function keys
+
+;; Let Kanata see every key. This makes Caps shortcuts respond immediately.
+(defcfg
+  process-unmapped-keys yes
+)
+
+;; caps-meh controls the tap and hold behavior of Caps Lock.
+;; fn-layer switches the top row to F1-F12 while Fn is held.
+(defalias
+  caps-meh (tap-hold-press 200 200 esc (multi lctl lalt lsft))
+  fn-layer (multi fn (layer-while-held function-keys))
+)
+
+;; These are the physical keys that Kanata changes.
+;; The key order must match the layers below.
+(defsrc
+  caps
+  f1   f2   f3   f4   f5   f6   f7   f8   f9   f10  f11  f12
+  fn
+)
+
+;; Normal behavior.
+;; The top row controls brightness, Mission Control, Spotlight, Dictation,
+;; Do Not Disturb, media playback, mute, and volume.
+(deflayer base
+  @caps-meh
+  brdn brup mctl sls  dtn  dnd  prev pp   next mute vold volu
+  @fn-layer
+)
+
+;; Behavior while Fn is held.
+;; The top row becomes standard F1-F12 keys.
+;; Underscores keep the normal Caps and Fn behavior.
+(deflayer function-keys
+  _
+  f1   f2   f3   f4   f5   f6   f7   f8   f9   f10  f11  f12
+  _
+)
