@@ -16,6 +16,7 @@ set -euo pipefail
 
 export DOTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+source "$DOTS/_shared/ui.sh"
 source "$DOTS/_shared/os.sh"
 source "$DOTS/_shared/platform.sh"
 source "$DOTS/_shared/pkg.sh"
@@ -31,7 +32,12 @@ PREFLIGHT="homebrew packages"
 # Space-padded name lists, e.g. " homebrew tmux ".
 COMPLETED=" "
 IN_PROGRESS=" "
-FAILED=" "
+
+# One line per package that ran: "name|ok|seconds" (or failed, skipped).
+RESULTS=""
+
+# -y / --yes: don't ask, just do it
+YES=""
 
 # Exit codes a package can hand back besides 0 (ok) and "anything else" (failed).
 RC_SKIPPED=100   # only_on said this machine doesn't qualify
@@ -92,10 +98,36 @@ deps_of() {
   echo "$line" | sed 's/^DEPS=(\(.*\)).*/\1/'
 }
 
+# ── running a package ─────────────────────────────────────────────────────────
+
+# record <package> <ok|failed|skipped> <seconds> — remembered for the summary
+record() { RESULTS="$RESULTS$1|$2|$3"$'\n'; }
+
+# run_pkg <package> <function> — run one function of one package under its own
+# header, then say how it went and how long it took
+run_pkg() {
+  local name="$1" fn="$2" rc=0 start=$SECONDS secs
+
+  log_header "$name"
+
+  if is_new_style "$name"; then
+    call_fn "$name" "$fn" || rc=$?
+  else
+    bash "$DOTS/$name/$fn" || rc=$?   # legacy: $fn is a script file name
+  fi
+
+  secs=$((SECONDS - start))
+  case "$rc" in
+    0)             log_ok "$name · ${secs}s"; record "$name" ok "$secs" ;;
+    "$RC_SKIPPED") record "$name" skipped "$secs" ;;   # only_on already said why
+    *)             log_err "$name failed · ${secs}s"; record "$name" failed "$secs"; return 1 ;;
+  esac
+}
+
 # ── install ───────────────────────────────────────────────────────────────────
 
 install_pkg() {
-  local name="$1" dep rc=0
+  local name="$1" dep
 
   [[ "$COMPLETED" == *" $name "* ]] && return 0
 
@@ -110,93 +142,119 @@ install_pkg() {
   for dep in $(deps_of "$name"); do
     if [[ "$IN_PROGRESS" == *" $dep "* ]]; then
       log_err "circular dep detected: $name → $dep"
-      exit 1
+      return 1
     fi
-    install_pkg "$dep"
+    install_pkg "$dep" || return 1
   done
-
-  log_header "$name"
 
   IN_PROGRESS="${IN_PROGRESS/ $name / }"
   COMPLETED="$COMPLETED$name "
 
   if is_new_style "$name"; then
-    call_fn "$name" install || rc=$?
+    run_pkg "$name" install
   else
-    bash "$DOTS/$name/setup.sh" || rc=$?
+    run_pkg "$name" setup.sh
   fi
-
-  case "$rc" in
-    0)             log_ok "$name done" ;;
-    "$RC_SKIPPED") ;;   # only_on already said why
-    *)             log_err "$name failed"; return 1 ;;
-  esac
 }
 
 run_install() {
-  local name
-  # a handful of named packages still need brew to exist on a fresh Mac
-  [ $# -gt 0 ] && [ -f "$DOTS/homebrew/setup.sh" ] && install_pkg homebrew
-  for name in $(selected_packages "$@"); do
-    install_pkg "$name"
+  local name names
+
+  if [ $# -gt 0 ]; then
+    names="$*"
+    # named packages still need brew to exist on a fresh Mac
+    [ "$DOT_PKG" = brew ] && [ -f "$DOTS/homebrew/setup.sh" ] && names="homebrew $names"
+  elif [ -n "$YES" ] || [ -z "$UI_ASK" ]; then
+    names="$(all_packages)"
+  else
+    # ui_choose says "nothing selected" itself
+    names="$(ui_choose "Install which packages?" $(all_packages))" || return 0
+  fi
+
+  # only a full run is long enough to outlive sudo's password timeout
+  [ $# -eq 0 ] && sudo_keepalive
+
+  # a failed package stops the run: what comes after may depend on it
+  for name in $names; do
+    install_pkg "$name" || break
   done
 }
 
 # ── upgrade / remove / secrets ────────────────────────────────────────────────
 
-# run_fn <function> <package>... — call one function in each package that has it
+has_fn() { is_new_style "$1" && grep -q "^$2()" "$DOTS/$1/setup.sh"; }
+
+# run_fn <function> <package>... — call one function in each package that has
+# it. A failure is recorded and the rest still run.
 run_fn() {
-  local fn="$1" name rc
+  local fn="$1" name
   shift
   for name in "$@"; do
-    is_new_style "$name" || continue
-    grep -q "^$fn()" "$DOTS/$name/setup.sh" || continue
-
-    log_header "$name"
-    rc=0
-    call_fn "$name" "$fn" || rc=$?
-    case "$rc" in
-      0)             log_ok "$name done" ;;
-      "$RC_SKIPPED") ;;
-      *)             log_err "$name failed"; FAILED="$FAILED$name " ;;
-    esac
+    has_fn "$name" "$fn" || continue
+    run_pkg "$name" "$fn" || true
   done
 }
 
 system_upgrade() {
+  local rc=0 start=$SECONDS
+
   log_header "system"
   if [ "$DOT_PKG" != brew ] && [ "$DOT_ROOT" = no ]; then
     log_warn "no root access — skipping system upgrade"
+    record system skipped 0
     return 0
   fi
   case "$DOT_PKG" in
-    brew)   brew update && brew upgrade ;;
-    apt)    as_root apt-get update && as_root apt-get upgrade -y ;;
-    pacman) as_root pacman -Syu --noconfirm ;;
-    dnf)    as_root dnf upgrade -y ;;
-    *)      log_warn "no known package manager — skipping system upgrade"; return 0 ;;
+    brew)   { brew update && brew upgrade; } || rc=$? ;;
+    apt)    { as_root apt-get update && as_root apt-get upgrade -y; } || rc=$? ;;
+    pacman) as_root pacman -Syu --noconfirm || rc=$? ;;
+    dnf)    as_root dnf upgrade -y || rc=$? ;;
+    *)
+      log_warn "no known package manager — skipping system upgrade"
+      record system skipped 0
+      return 0
+      ;;
   esac
-  log_ok "system done"
+
+  if [ "$rc" = 0 ]; then
+    log_ok "system · $((SECONDS - start))s"
+    record system ok "$((SECONDS - start))"
+  else
+    log_err "system failed · $((SECONDS - start))s"
+    record system failed "$((SECONDS - start))"
+  fi
 }
 
 run_upgrade() {
   # the whole system only when no package was named
-  [ $# -eq 0 ] && system_upgrade
+  if [ $# -eq 0 ]; then
+    sudo_keepalive
+    system_upgrade
+  fi
   run_fn upgrade $(selected_packages "$@")
 }
 
 run_remove() {
+  local name removable=""
+
   if [ $# -eq 0 ]; then
     log_err "remove needs at least one package name"
     exit 1
   fi
-  local name
-  for name in $(selected_packages "$@"); do
-    if ! is_new_style "$name" || ! grep -q '^remove()' "$DOTS/$name/setup.sh"; then
+  for name in "$@"; do
+    if has_fn "$name" remove; then
+      removable="$removable $name"
+    else
       log_warn "$name has no remove() yet — nothing removed"
     fi
   done
-  run_fn remove $(selected_packages "$@")
+  [ -n "$removable" ] || return 0
+
+  if [ -z "$YES" ] && ! ui_confirm "Remove config for:$removable?"; then
+    log_info "nothing removed"
+    return 0
+  fi
+  run_fn remove $removable
 }
 
 # run_secrets <function> <legacy script> <package>...
@@ -207,13 +265,7 @@ run_secrets() {
     if is_new_style "$name"; then
       run_fn "$fn" "$name"
     elif [ -f "$DOTS/$name/$script" ]; then
-      log_header "$name"
-      if bash "$DOTS/$name/$script"; then
-        log_ok "$name done"
-      else
-        log_err "$name failed"
-        FAILED="$FAILED$name "
-      fi
+      run_pkg "$name" "$script" || true
     fi
   done
 }
@@ -223,8 +275,32 @@ run_update() {
   git -C "$DOTS" pull --ff-only
   log_ok "dotfiles up to date"
   # start again so the freshly pulled dot does the installing
-  rm -rf "$DOT_RUN_DIR"
-  exec "$DOTS/dot" install
+  cleanup
+  exec "$DOTS/dot" install --yes
+}
+
+# ── sudo ──────────────────────────────────────────────────────────────────────
+
+# Ask for the sudo password once, up front, and keep it from timing out, so a
+# long run doesn't stop for a password twenty minutes in. Only when there is a
+# person to ask and this user can become root at all.
+SUDO_LOOP=""
+sudo_keepalive() {
+  [ "$(id -u)" != 0 ] && [ "$DOT_ROOT" = yes ] && [ -n "$UI_ASK" ] || return 0
+  [ -z "$SUDO_LOOP" ] || return 0
+
+  log_info "some steps need root — asking for your password once"
+  if ! sudo -v; then
+    log_err "sudo is needed for this run"
+    exit 1
+  fi
+  # refresh every 50s until dot is gone. Detached from the terminal, so a
+  # leftover `sleep` can't hold `dot | tee log` open after dot has finished.
+  ( while sleep 50; do
+      kill -0 "$$" 2>/dev/null || exit 0
+      sudo -n true 2>/dev/null || exit 0
+    done ) </dev/null >/dev/null 2>&1 &
+  SUDO_LOOP=$!
 }
 
 # ── info ──────────────────────────────────────────────────────────────────────
@@ -252,13 +328,16 @@ show_help() {
   cat <<'EOF'
 Usage: dot [command] [package...]
 
-  dot                      install every package
+  dot                      choose packages to install (everything, if nobody
+                           is there to ask)
   dot tmux zsh             install specific packages
   dot install [package...] same as above
   dot update               pull this repo, then install everything again
   dot upgrade              upgrade the system's packages, then each package
   dot upgrade tmux         upgrade one package only (no system upgrade)
   dot remove tmux          undo a package's config (does not uninstall software)
+
+  -y, --yes                don't ask which packages or "are you sure"
 
   dot --list               list available packages
   dot --facts              show what dot detected about this machine
@@ -278,14 +357,34 @@ ensure_secrets_file() {
   chmod 600 "$SECRETS_FILE"
 }
 
+cleanup() {
+  [ -n "${DOT_RUN_DIR:-}" ] && rm -rf "$DOT_RUN_DIR"
+  [ -n "$SUDO_LOOP" ] && kill "$SUDO_LOOP" 2>/dev/null
+  return 0
+}
+
+# the summary, when more than one thing ran, and the exit code
 finish() {
-  if [ "$FAILED" != " " ]; then
-    log_err "failed:$FAILED"
-    exit 1
+  if [ "$(printf '%s' "$RESULTS" | wc -l)" -gt 1 ]; then
+    log_header "summary"
+    printf '%s' "$RESULTS" | ui_summary
   fi
+  [[ "$RESULTS" != *"|failed|"* ]]
 }
 
 # ── main ──────────────────────────────────────────────────────────────────────
+
+# pull -y / --yes out of the arguments, wherever it was written
+n=$#
+while [ "$n" -gt 0 ]; do
+  arg="$1"
+  shift
+  n=$((n - 1))
+  case "$arg" in
+    -y|--yes) YES=1 ;;
+    *)        set -- "$@" "$arg" ;;
+  esac
+done
 
 cmd="${1:-install}"
 case "$cmd" in
@@ -298,7 +397,8 @@ ensure_secrets_file
 
 # scratch space for this run only (e.g. "apt lists already refreshed")
 export DOT_RUN_DIR="$(mktemp -d)"
-trap 'rm -rf "$DOT_RUN_DIR"' EXIT
+trap cleanup EXIT
+trap 'echo; log_err "interrupted"; finish || true; exit 130' INT TERM
 
 # drop the command word; what is left are package names
 case "$cmd" in
