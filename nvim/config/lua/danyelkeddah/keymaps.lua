@@ -96,12 +96,3 @@ map('i', '<C-j>', '<Down>', { desc = 'Insert: cursor down' })
 map('i', '<C-k>', '<Up>', { desc = 'Insert: cursor up' })
 map('i', '<C-b>', '<esc>^i', { desc = 'Insert: jump to start of line' })
 map('i', '<C-e>', '<end>', { desc = 'Insert: jump to end of line' })
-
--- TODO: revisit once all plugins are installed
---   1. <S-h>/<S-l> override the default H/L (jump to screen top/bottom). Intentional but destructive.
---   2. <C-h> in insert mode: by terminal convention <C-h> == <BS>. Remapping to <Left> means Ctrl+H
---      moves instead of backspacing. Fine if you only use real Backspace.
---   3. <C-j>/<C-k> in insert mode will clash with completion plugins (blink.cmp, nvim-cmp) which
---      typically bind them to next/prev completion item. Pick a winner when you install one.
---   4. q: -> :q<cr>. If you'd rather just disable the cmdline history window without risking
---      an accidental quit, swap to: map('n', 'q:', '<nop>').

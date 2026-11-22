@@ -43,7 +43,7 @@
     },
     "gruvbox-material": {
       "rev": "11d779b26a9ab2b3db8c22c6ac9fb6e8ed4fea79",
-      "src": "ssh://git@github.com/sainnhe/gruvbox-material"
+      "src": "https://github.com/sainnhe/gruvbox-material"
     },
     "lazydev.nvim": {
       "rev": "ff2cbcba459b637ec3fd165a2be59b7bbaeedf0d",
@@ -57,9 +57,17 @@
       "rev": "12ddd182d9efbdc848b540f16484a583d52da0fb",
       "src": "https://github.com/williamboman/mason.nvim"
     },
+    "merino": {
+      "rev": "02b855ac6512d55384bf191c0c1e1fe87d9701c8",
+      "src": "https://github.com/danyelkeddah/merino.nvim"
+    },
+    "merino.nvim": {
+      "rev": "02b855ac6512d55384bf191c0c1e1fe87d9701c8",
+      "src": "https://github.com/danyelkeddah/merino.nvim"
+    },
     "mini.ai": {
       "rev": "43eb2074843950a3a25aae56a5f41362ec043bfa",
-      "src": "ssh://git@github.com/echasnovski/mini.ai"
+      "src": "https://github.com/echasnovski/mini.ai"
     },
     "mini.files": {
       "rev": "e8db416c9f5dbce70f5501da28263d45c0a4df6b",
@@ -71,19 +79,19 @@
     },
     "mini.pairs": {
       "rev": "42387c7fe68fc0b6e95eaf37f1bb76e7bffaa0d9",
-      "src": "ssh://git@github.com/echasnovski/mini.pairs"
+      "src": "https://github.com/echasnovski/mini.pairs"
     },
     "mini.splitjoin": {
       "rev": "8bd5a3d581b9f3dd3bc91fe495e210b8b0ee981d",
-      "src": "ssh://git@github.com/echasnovski/mini.splitjoin"
+      "src": "https://github.com/echasnovski/mini.splitjoin"
     },
     "mini.statusline": {
       "rev": "b456bfe845e475e9cec065b7a9a1ef657ad2f41b",
-      "src": "ssh://git@github.com/echasnovski/mini.statusline"
+      "src": "https://github.com/echasnovski/mini.statusline"
     },
     "mini.surround": {
       "rev": "2715e04bea3ec9244f15b421dc5b18c0fe326210",
-      "src": "ssh://git@github.com/echasnovski/mini.surround"
+      "src": "https://github.com/echasnovski/mini.surround"
     },
     "nvim-lint": {
       "rev": "eab58b48eb11d7745c11c505e0f3057165902461",
@@ -91,7 +99,7 @@
     },
     "nvim-treesitter": {
       "rev": "4916d6592ede8c07973490d9322f187e07dfefac",
-      "src": "ssh://git@github.com/nvim-treesitter/nvim-treesitter"
+      "src": "https://github.com/nvim-treesitter/nvim-treesitter"
     },
     "nvim-treesitter-textobjects": {
       "rev": "851e865342e5a4cb1ae23d31caf6e991e1c99f1e",
@@ -100,7 +108,7 @@
     },
     "nvim-ts-autotag": {
       "rev": "88c1453db4ba7dd24131086fe51fdf74e587d275",
-      "src": "ssh://git@github.com/windwp/nvim-ts-autotag"
+      "src": "https://github.com/windwp/nvim-ts-autotag"
     },
     "nvim-web-devicons": {
       "rev": "c72328a5494b4502947a022fe69c0c47e53b6aa6",
@@ -128,11 +136,11 @@
     },
     "tokyonight.nvim": {
       "rev": "cdc07ac78467a233fd62c493de29a17e0cf2b2b6",
-      "src": "ssh://git@github.com/folke/tokyonight.nvim"
+      "src": "https://github.com/folke/tokyonight.nvim"
     },
     "ts-comments.nvim": {
       "rev": "123a9fb12e7229342f807ec9e6de478b1102b041",
-      "src": "ssh://git@github.com/folke/ts-comments.nvim"
+      "src": "https://github.com/folke/ts-comments.nvim"
     },
     "vim-fugitive": {
       "rev": "3b753cf8c6a4dcde6edee8827d464ba9b8c4a6f0",
@@ -144,11 +152,11 @@
     },
     "vim-textobj-user": {
       "rev": "41a675ddbeefd6a93664a4dc52f302fe3086a933",
-      "src": "ssh://git@github.com/kana/vim-textobj-user"
+      "src": "https://github.com/kana/vim-textobj-user"
     },
     "vim-textobj-xmlattr": {
       "rev": "694a297f1d75fd527e87da9769f3c6519a87ebb1",
-      "src": "ssh://git@github.com/whatyouhide/vim-textobj-xmlattr"
+      "src": "https://github.com/whatyouhide/vim-textobj-xmlattr"
     },
     "vim-tmux-navigator": {
       "rev": "e41c431a0c7b7388ae7ba341f01a0d217eb3a432",

@@ -47,11 +47,8 @@ vim.api.nvim_create_autocmd('LspAttach', {
             vim.keymap.set(mode, lhs, rhs, opts)
         end
 
-        map('n', 'gr', vim.lsp.buf.references, 'References', { nowait = true })
-        map('n', 'gI', vim.lsp.buf.implementation, 'Goto Implementation')
         map('n', 'gT', vim.lsp.buf.type_definition, 'Goto Type Definition')
         map('n', 'gK', vim.lsp.buf.signature_help, 'Signature Help')
-        map('i', '<C-k>', vim.lsp.buf.signature_help, 'Signature Help')
         map({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, 'Code Action')
         map({ 'n', 'v' }, '<leader>cc', vim.lsp.codelens.run, 'Run Codelens')
         map('n', '<leader>cC', vim.lsp.codelens.refresh, 'Refresh & Display Codelens')

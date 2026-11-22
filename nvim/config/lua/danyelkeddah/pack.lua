@@ -1,5 +1,6 @@
 vim.pack.add({
     { src = 'https://github.com/catppuccin/nvim', name = 'catppuccin' },
+    -- { src = 'https://github.com/danyelkeddah/merino.nvim', name = 'merino' },
     { src = 'https://github.com/nvim-lua/plenary.nvim' },
     -- { src = 'https://github.com/tpope/vim-repeat' },
     { src = 'https://github.com/christoomey/vim-tmux-navigator' },
@@ -20,6 +21,7 @@ vim.pack.add({
     { src = 'https://github.com/phpactor/phpactor' },
     { src = 'https://github.com/MeanderingProgrammer/render-markdown.nvim' },
     { src = 'https://github.com/echasnovski/mini.icons' },
+    -- { src = 'https://github.com/echasnovski/mini.files' },
     { src = 'https://github.com/folke/snacks.nvim' },
     { src = 'https://github.com/b0o/SchemaStore.nvim' },
     { src = 'https://github.com/folke/lazydev.nvim' },
@@ -45,7 +47,33 @@ vim.pack.add({
     { src = 'https://github.com/sainnhe/gruvbox-material' },
 })
 
+-- Update every managed plugin with `:PackUpdate`, or target specific plugins by passing
+-- their names (for example, `:PackUpdate oil.nvim snacks.nvim`). The native confirmation
+-- buffer opens afterward; write it to apply the changes or quit it to cancel.
+vim.api.nvim_create_user_command('PackUpdate', function(args)
+    -- `vim.pack.update(nil)` means all plugins; otherwise update only the supplied names.
+    local names = #args.fargs > 0 and args.fargs or nil
+    vim.pack.update(names)
+end, {
+    desc = 'Update plugins',
+    nargs = '*',
+    complete = function(arglead)
+        -- Complete against all managed packages, including inactive fallback plugins.
+        local names = vim.iter(vim.pack.get(nil, { info = false }))
+            :map(function(plugin)
+                return plugin.spec.name
+            end)
+            :filter(function(name)
+                return vim.startswith(name, arglead)
+            end)
+            :totable()
+        table.sort(names)
+        return names
+    end,
+})
+
 require('danyelkeddah.plugins.catppuccin')
+-- require('danyelkeddah.plugins.merino')
 require('danyelkeddah.plugins.vim-fugitive')
 require('danyelkeddah.plugins.cloak')
 require('danyelkeddah.plugins.grug-far')
@@ -62,6 +90,7 @@ require('danyelkeddah.plugins.gitsigns')
 require('danyelkeddah.plugins.mason')
 require('danyelkeddah.plugins.fidget')
 require('danyelkeddah.plugins.mini-ai')
+-- require('danyelkeddah.plugins.mini-files')
 require('danyelkeddah.plugins.nvim-treesitter')
 require('danyelkeddah.plugins.nvim-ts-autotag')
 require('danyelkeddah.plugins.ts-comments')

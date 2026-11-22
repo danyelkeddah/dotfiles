@@ -19,13 +19,8 @@
 [ -d "$HOME/bin" ] && export PATH=$HOME/bin:$PATH
 [ -d "$HOME/.local/bin" ] && export PATH=$HOME/.local/bin:$PATH
 
-# Go — workspace for packages and compiled binaries, uses go env for portability across platforms
 export GOPATH="$HOME/.go"
-if command -v go &>/dev/null; then
-  export GOROOT="$(go env GOROOT)"
-  export PATH=$PATH:$GOROOT/bin
-fi
-[ -d "$GOPATH/bin" ] && export PATH=$PATH:$GOPATH/bin
+[ -d "$GOPATH/bin" ] && export PATH="$PATH:$GOPATH/bin"
 
 # pnpm — fast Node package manager, stores global binaries under ~/.local/share/pnpm
 export PNPM_HOME="${HOME}/.local/share/pnpm"

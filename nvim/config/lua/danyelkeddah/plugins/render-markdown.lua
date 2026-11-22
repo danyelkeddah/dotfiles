@@ -5,6 +5,10 @@ require('render-markdown').setup({
 })
 
 local function set_heading_highlights()
+    -- only for catppuccin; other themes set their own heading colors
+    if not (vim.g.colors_name or ''):match('^catppuccin') then
+        return
+    end
     local ok, palettes = pcall(require, 'catppuccin.palettes')
     if not ok then
         return

@@ -71,21 +71,3 @@ vim.opt.redrawtime = 10000 -- ms budget for syntax redraw on long lines
 vim.opt.shortmess:append({ W = true, I = true, c = true, C = true }) -- silence "written", intro, and completion noise
 vim.opt.exrc = true -- source project-local .nvim.lua (requires :trust per project)
 vim.g.markdown_recommended_style = 0 -- don't let runtime ftplugin/markdown.vim override tabstop/shiftwidth
-
--- Diagnostics
-vim.diagnostic.config({
-    virtual_text = { -- inline message at the end of the offending line
-        prefix = '●',
-        spacing = 4,
-        source = 'if_many', -- show source name only when multiple sources disagree
-    },
-    signs = { -- per-severity icon in the signcolumn
-        text = {
-            [vim.diagnostic.severity.ERROR] = '',
-            [vim.diagnostic.severity.WARN] = '',
-            [vim.diagnostic.severity.HINT] = '',
-            [vim.diagnostic.severity.INFO] = '',
-        },
-    },
-    severity_sort = true, -- order diagnostics by severity (errors first)
-})

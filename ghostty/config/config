@@ -2,11 +2,13 @@ font-family = JetBrainsMono Nerd Font Mono
 #font-family = BerkeleyMono Nerd Font Mono
 font-size = 15
 theme = Catppuccin Mocha
-font-thicken = true
-bold-is-bright = true
+# theme = marino-dark.ghostty
+font-thicken = false
 adjust-cell-height = 35%
 macos-titlebar-style = hidden
 cursor-style = block
+cursor-style-blink = true
+minimum-contrast = 1.1
 mouse-hide-while-typing = true
 window-padding-balance = true
 window-save-state = always
@@ -14,12 +16,13 @@ window-save-state = always
 window-colorspace = "srgb"
 clipboard-read = allow
 clipboard-write = allow
-copy-on-select = true
+copy-on-select = false
 auto-update = check
 auto-update-channel = tip
 shell-integration-features = true
 unfocused-split-opacity = 0.55
-
+# bold-color = bright
+# unfocused-split-opacity = 0.55
 
 # command tab
 #keybind = super+t=text:\x02\x63
