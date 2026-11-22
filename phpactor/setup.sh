@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-DEPS=(php)
+# needs php, which mise installs
+DEPS=(mise)
 
 BIN="$HOME/.local/bin/phpactor"
 
@@ -18,7 +19,9 @@ install() {
   else
     phpactor_download
   fi
+}
 
+configure() {
   symlink "$DOTS/phpactor/config" "$HOME/.config/phpactor"
 }
 
@@ -26,6 +29,11 @@ upgrade() {
   phpactor_download
 }
 
-remove() {
+unconfigure() {
   unlink_dot "$HOME/.config/phpactor"
+}
+
+uninstall() {
+  rm -f "$BIN"
+  log_ok "removed $BIN"
 }

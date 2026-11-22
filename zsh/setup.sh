@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
+# no uninstall(): zsh is the login shell
 
 COMPLETIONS="$HOME/.config/zsh/completions"
 FZF_TAB="$HOME/.config/zsh/plugins/fzf-tab"
 
 install() {
-  local shell
-
   pkg_install zsh
   [ "$DOT_PKG" = brew ] && pkg_install zsh-completions
+  return 0
+}
+
+configure() {
+  local shell
 
   # make it the login shell
   case "$DOT_PKG" in
@@ -51,20 +55,8 @@ upgrade() {
   git -C "$FZF_TAB" pull --ff-only
 }
 
-remove() {
+# the login shell is left as it is
+unconfigure() {
   unlink_dot "$HOME/.zshrc"
   unlink_dot "$HOME/.config/zsh"
-}
-
-sync_secrets() {
-  local key
-  log_info "syncing anthropic api key..."
-  # read first, on its own line: if 1Password fails, stop here rather than
-  # store an empty key
-  key="$(op read "op://Personal/d5qqmscjtlpcsv5e5uxhgfbeb4/anthropic - personal token")"
-  upsert_secret "ANTHROPIC_API_KEY" "$key"
-}
-
-remove_secrets() {
-  remove_secret "ANTHROPIC_API_KEY"
 }

@@ -1,24 +1,24 @@
 #compdef dot
 # Tab completion for dot.
 #
-#   dot <TAB>              commands and package names
-#   dot -<TAB>             options
-#   dot upgrade <TAB>      only packages that have an upgrade()
-#   dot remove <TAB>       only packages that have a remove()
+#   dot <TAB>                  commands and package names
+#   dot -<TAB>                 options
+#   dot upgrade <TAB>          only packages that have an upgrade()
+#   dot uninstall <TAB>        only packages that can be unconfigured or uninstalled
 #   dot --sync-secrets <TAB>   only packages that have secrets
+#   dot run mise <TAB>         the functions of that package
 #
-# Package names are read from the repo each time, so a new package shows up
+# Package names come from dot itself each time, so a new package shows up
 # without touching this file.
 
-# offer the packages whose setup.sh defines the given function, leaving out
-# the ones already on the command line
+# offer the packages that apply to this machine and define at least one of the
+# given functions, leaving out the ones already on the command line. dot itself
+# answers, so the list is exactly what dot would act on.
 _dot_packages() {
-  local fn=$1 dots=${DOTFILES:-$HOME/.dotfiles} file
+  local dots=${DOTFILES:-$HOME/.dotfiles}
   local -a names
 
-  for file in $dots/*/setup.sh(N); do
-    grep -q "^$fn()" $file && names+=(${file:h:t})
-  done
+  names=(${(f)"$(bash $dots/dot --packages "$@" 2>/dev/null)"})
   names=(${names:|words})
 
   _describe -t packages 'package' names
@@ -27,18 +27,21 @@ _dot_packages() {
 _dot() {
   local -a commands options
   commands=(
-    'install:install packages (what dot does when no command is given)'
+    'install:install the software, then configure it (what dot does with no command)'
+    'configure:only link config and apply settings'
     'upgrade:upgrade the system, then each package'
-    'remove:undo the config of a package (does not uninstall software)'
+    'unconfigure:undo the config of a package, keep the software'
+    'uninstall:undo the config, then remove the software'
     'update:pull the dotfiles, then install everything again'
+    'run:run one function of a package (dot run <package> <function>)'
   )
   options=(
     '--yes:do not ask which packages or "are you sure"'
     '-y:do not ask which packages or "are you sure"'
     '--list:list available packages'
     '--facts:show what dot detected about this machine'
-    '--sync-secrets:sync secrets from 1Password'
-    '--remove-secrets:remove synced secrets'
+    '--sync-secrets:write secret files from 1Password'
+    '--remove-secrets:remove the secret files again'
     '--brew-dump:dump installed brew packages to the Brewfile'
     '--brew-cleanup:remove brew packages that are not in the Brewfile'
     '--help:show usage'
@@ -57,18 +60,30 @@ _dot() {
       _describe -t options 'option' options
     else
       _describe -t commands 'command' commands
-      _dot_packages install
+      _dot_packages install configure
     fi
     return
   fi
 
   case $command in
+    configure)        _dot_packages configure ;;
     upgrade)          _dot_packages upgrade ;;
-    remove)           _dot_packages remove ;;
+    unconfigure)      _dot_packages unconfigure ;;
+    uninstall)        _dot_packages unconfigure uninstall ;;
     --sync-secrets)   _dot_packages sync_secrets ;;
     --remove-secrets) _dot_packages remove_secrets ;;
+    run)
+      # dot run <package> <function>
+      if (( CURRENT == 3 )); then
+        _dot_packages install configure sync_secrets
+      elif (( CURRENT == 4 )); then
+        local -a functions
+        functions=(${(f)"$(bash -c 'only_on() { :; }; source "$1" >/dev/null 2>&1; declare -F | cut -d" " -f3 | grep -vx only_on' _ ${DOTFILES:-$HOME/.dotfiles}/$words[3]/setup.sh 2>/dev/null)"})
+        _describe -t functions 'function' functions
+      fi
+      ;;
     update|--list|--facts|--help|-h|--brew-dump|--brew-cleanup) ;;   # take no arguments
-    *)                _dot_packages install ;;   # `dot install <TAB>` and `dot tmux <TAB>`
+    *)                _dot_packages install configure ;;   # `dot install <TAB>` and `dot tmux <TAB>`
   esac
 }
 

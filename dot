@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
-# dot — installs, upgrades and removes the packages in this repo.
+# dot — installs, configures, upgrades and removes the packages in this repo.
 #
 # A package is a folder with a setup.sh that defines functions; dot calls the
-# one it needs:
+# ones it needs:
 #
-#   install()  upgrade()  remove()  sync_secrets()  remove_secrets()
+#   install()      get the software            uninstall()     remove it
+#   configure()    link config, apply settings unconfigure()   undo that
+#   upgrade()      move to a newer version
+#   sync_secrets() write secret files          remove_secrets()
 #
-# Only install() is required. Code outside the functions runs every time the
-# file is loaded — that is where only_on and shared variables go.
+# All are optional; a package defines the ones that mean something for it.
+# Code outside the functions runs every time the file is loaded — that is
+# where only_on and shared variables go.
+#
+#   dot install     = install()     then configure()
+#   dot uninstall   = unconfigure() then uninstall()
 #
 # Written to run on bash 3.2 (stock macOS): no associative arrays, and no
 # expanding possibly-empty arrays under `set -u`.
@@ -22,19 +29,19 @@ source "$DOTS/_shared/pkg.sh"
 
 # Tools one package installs must be findable by the next one in the same run,
 # before any shell has been restarted. Same places zsh/config/zsh/config/path.zsh
-# puts on PATH.
+# puts on PATH, plus mise's shims (what `mise activate` provides in zsh).
 export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PNPM_HOME:$PNPM_HOME/bin:$PATH"
+export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.cargo/bin:$PNPM_HOME:$PNPM_HOME/bin:$PATH"
 # a freshly installed Homebrew (Apple Silicon keeps it outside the default PATH)
 [ -d /opt/homebrew/bin ] && export PATH="/opt/homebrew/bin:$PATH"
 
 export -f log_ok log_err log_info log_warn log_header \
-  only_on \
-  symlink unlink_dot upsert_secret remove_secret drop_secret_line \
-  as_root pkg_installed pkg_install apt_add_repo apt_add_ppa
+  platform_matches only_on \
+  symlink unlink_dot ui_confirm \
+  as_root pkg_installed pkg_install pkg_uninstall apt_add_repo
 
 # These always run first on a full install, in this order.
-PREFLIGHT="homebrew packages"
+PREFLIGHT="homebrew mise packages"
 
 # Space-padded name lists, e.g. " homebrew tmux ".
 COMPLETED=" "
@@ -46,7 +53,7 @@ RESULTS=""
 # -y / --yes: don't ask, just do it
 YES=""
 
-# call_fn exits with this when the package doesn't define the function
+# call_fn exits with this when the package defines none of the functions asked for
 RC_NO_FN=127
 
 # ── Packages ──────────────────────────────────────────────────────────────────
@@ -64,6 +71,42 @@ all_packages() {
   done
 }
 
+# applies <package> — does this package apply to this machine?
+# Loads the file and sees whether only_on stopped it. No function is called,
+# so nothing is installed or changed.
+applies() {
+  local probe="$DOT_RUN_DIR/probe"
+  rm -rf "$probe"
+  mkdir -p "$probe"
+  DOT_RUN_DIR="$probe" bash -c 'source "$1"' _ "$DOTS/$1/setup.sh" >/dev/null 2>&1
+  [ ! -f "$probe/skipped" ]
+}
+
+# packages_with <function>... — packages that apply here and define at least
+# one of the functions. One look per package; used by tab completion.
+packages_with() {
+  local name probe="$DOT_RUN_DIR/probe"
+  for name in $(all_packages); do
+    rm -rf "$probe"
+    mkdir -p "$probe"
+    DOT_RUN_DIR="$probe" bash -c '
+      source "$1" >/dev/null 2>&1
+      shift
+      for fn in "$@"; do declare -F "$fn" >/dev/null && exit 0; done
+      exit 1
+    ' _ "$DOTS/$name/setup.sh" "$@" || continue
+    [ -f "$probe/skipped" ] || echo "$name"
+  done
+}
+
+# every package that applies here, in the same order as all_packages
+applicable_packages() {
+  local name
+  for name in $(all_packages); do
+    applies "$name" && echo "$name"
+  done
+}
+
 # stop before doing anything if a name on the command line isn't a package
 check_names() {
   local name
@@ -75,27 +118,45 @@ check_names() {
   done
 }
 
-# the names given on the command line, or every package when none were given
+# the names given on the command line, or every package that applies here
+# when none were given
 selected_packages() {
   if [ $# -eq 0 ]; then
-    all_packages
+    applicable_packages
   else
     printf '%s\n' "$@"
   fi
 }
 
-has_fn() { grep -q "^$2()" "$DOTS/$1/setup.sh"; }
+# has_fn <package> <function> — does the package define this function?
+# Asks bash itself, by loading the file and looking: no guessing from the text.
+# only_on is switched off for the look, so a package that doesn't apply to this
+# machine can still be asked.
+has_fn() {
+  bash -c 'only_on() { :; }; source "$1" >/dev/null 2>&1; declare -F "$2" >/dev/null' \
+    _ "$DOTS/$1/setup.sh" "$2"
+}
 
-# call_fn <package> <function> — run one function of a package in its own
-# bash, so nothing a package sets or cd's into leaks into the next one.
-# The function stops at its first failing command.
+# call_fn <package> <function>... — run the given functions of a package, in
+# order, skipping the ones it doesn't define. They run in their own bash, so
+# nothing a package sets or cd's into leaks into the next one, and each stops
+# at its first failing command.
 call_fn() {
+  local name="$1"
+  shift
   bash -c '
     set -eo pipefail
     source "$1"
-    declare -F "$2" >/dev/null || { log_err "$1 has no $2()"; exit '"$RC_NO_FN"'; }
-    "$2"
-  ' _ "$DOTS/$1/setup.sh" "$2"
+    shift
+    ran=""
+    for fn in "$@"; do
+      if declare -F "$fn" >/dev/null; then
+        "$fn"
+        ran=1
+      fi
+    done
+    [ -n "$ran" ] || exit '"$RC_NO_FN"'
+  ' _ "$DOTS/$name/setup.sh" "$@"
 }
 
 deps_of() {
@@ -110,18 +171,22 @@ deps_of() {
 # record <package> <ok|failed|skipped> <seconds> — remembered for the summary
 record() { RESULTS="$RESULTS$1|$2|$3"$'\n'; }
 
-# run_pkg <package> <function> — run one function of one package under its own
-# header, then say how it went and how long it took
+# run_pkg <package> <function>... — run those functions of one package under
+# its own header, then say how it went and how long it took
 run_pkg() {
-  local name="$1" fn="$2" rc=0 start=$SECONDS secs
+  local name="$1" rc=0 start=$SECONDS secs
+  shift
 
   log_header "$name"
 
   rm -f "$DOT_RUN_DIR/skipped"
-  call_fn "$name" "$fn" || rc=$?
+  call_fn "$name" "$@" || rc=$?
   secs=$((SECONDS - start))
 
-  if [ "$rc" != 0 ]; then
+  if [ "$rc" = "$RC_NO_FN" ]; then
+    log_info "nothing to do — $name has no $(echo "$*" | sed 's/ /() or /g')()"
+    record "$name" skipped "$secs"
+  elif [ "$rc" != 0 ]; then
     log_err "$name failed · ${secs}s"
     record "$name" failed "$secs"
     return 1
@@ -159,7 +224,7 @@ install_pkg() {
   IN_PROGRESS="${IN_PROGRESS/ $name / }"
   COMPLETED="$COMPLETED$name "
 
-  run_pkg "$name" install
+  run_pkg "$name" install configure
 }
 
 run_install() {
@@ -170,10 +235,10 @@ run_install() {
     # named packages still need brew to exist on a fresh Mac
     [ "$DOT_PKG" = brew ] && [ -f "$DOTS/homebrew/setup.sh" ] && names="homebrew $names"
   elif [ -n "$YES" ] || [ -z "$UI_ASK" ]; then
-    names="$(all_packages)"
+    names="$(packages_with install configure)"
   else
     # ui_choose says "nothing selected" itself
-    names="$(ui_choose "Install which packages?" $(all_packages))" || return 0
+    names="$(ui_choose "Install which packages?" $(packages_with install configure))" || return 0
   fi
 
   # only a full run is long enough to outlive sudo's password timeout
@@ -185,7 +250,7 @@ run_install() {
   done
 }
 
-# ── upgrade / remove / secrets ────────────────────────────────────────────────
+# ── configure / upgrade / uninstall / secrets ─────────────────────────────────
 
 # run_fn <function> <package>... — call one function in each package that has
 # it. A failure is recorded and the rest still run.
@@ -237,27 +302,55 @@ run_upgrade() {
   run_fn upgrade $(selected_packages "$@")
 }
 
-run_remove() {
-  local name removable=""
+run_configure() {
+  run_fn configure $(selected_packages "$@")
+}
 
-  if [ $# -eq 0 ]; then
-    log_err "remove needs at least one package name"
+# need_names <command> <package>... — commands that undo things never default
+# to "every package"
+need_names() {
+  if [ $# -lt 2 ]; then
+    log_err "$1 needs at least one package name"
     exit 1
   fi
+}
+
+run_unconfigure() {
+  local name names=""
+
+  need_names unconfigure "$@"
   for name in "$@"; do
-    if has_fn "$name" remove; then
-      removable="$removable $name"
+    if has_fn "$name" unconfigure; then
+      names="$names $name"
     else
-      log_warn "$name has no remove() — nothing removed"
+      log_warn "$name has no unconfigure() — nothing to undo"
     fi
   done
-  [ -n "$removable" ] || return 0
+  [ -n "$names" ] || return 0
 
-  if [ -z "$YES" ] && ! ui_confirm "Remove config for:$removable?"; then
+  if [ -z "$YES" ] && ! ui_confirm "Remove the config of:$names?"; then
     log_info "nothing removed"
     return 0
   fi
-  run_fn remove $removable
+  run_fn unconfigure $names
+}
+
+run_uninstall() {
+  local name
+
+  need_names uninstall "$@"
+  if [ -z "$YES" ] && ! ui_confirm "Remove the config AND the software of: $*?"; then
+    log_info "nothing removed"
+    return 0
+  fi
+
+  for name in "$@"; do
+    # some software is shared with the rest of the system (git, zsh): those
+    # packages have no uninstall() on purpose
+    has_fn "$name" uninstall \
+      || log_warn "$name has no uninstall() — only its config is removed, the software stays"
+    run_pkg "$name" unconfigure uninstall || true
+  done
 }
 
 run_update() {
@@ -299,7 +392,11 @@ list_packages() {
   local name
   echo "Available packages:"
   for name in $(all_packages); do
-    echo " • $name"
+    if applies "$name"; then
+      echo " • $name"
+    else
+      echo "${UI_DIM} • $name  (not for this machine)${UI_OFF}"
+    fi
   done
 }
 
@@ -318,33 +415,30 @@ show_help() {
   cat <<'EOF'
 Usage: dot [command] [package...]
 
-  dot                      choose packages to install (everything, if nobody
-                           is there to ask)
-  dot tmux zsh             install specific packages
-  dot install [package...] same as above
-  dot update               pull this repo, then install everything again
-  dot upgrade              upgrade the system's packages, then each package
-  dot upgrade tmux         upgrade one package only (no system upgrade)
-  dot remove tmux          undo a package's config (does not uninstall software)
+  dot                        choose packages to install (everything, if nobody
+                             is there to ask)
+  dot tmux zsh               install specific packages
+  dot install [package...]   same: install the software, then configure it
+  dot configure [package...] only link config and apply settings
+  dot upgrade                upgrade the system's packages, then each package
+  dot upgrade tmux           upgrade one package only (no system upgrade)
+  dot unconfigure tmux       undo a package's config, keep the software
+  dot uninstall tmux         undo the config, then remove the software
+  dot update                 pull this repo, then install everything again
+  dot run mise cleanup_old   run any one function of a package
 
   -y, --yes                don't ask which packages or "are you sure"
 
   dot --list               list available packages
   dot --facts              show what dot detected about this machine
-  dot --sync-secrets [package...]    sync secrets from 1Password
-  dot --remove-secrets [package...]  remove synced secrets
+  dot --sync-secrets [package...]    write secret files from 1Password
+  dot --remove-secrets [package...]  remove them again
   dot --brew-dump          dump installed brew packages to Brewfile
   dot --brew-cleanup       remove packages not in Brewfile
   dot --help               this text
 
 EOF
   list_packages
-}
-
-# secrets file must exist so any package can safely reference it
-ensure_secrets_file() {
-  [ -f "$SECRETS_FILE" ] || touch "$SECRETS_FILE"
-  chmod 600 "$SECRETS_FILE"
 }
 
 cleanup() {
@@ -376,31 +470,53 @@ while [ "$n" -gt 0 ]; do
   esac
 done
 
-cmd="${1:-install}"
-case "$cmd" in
-  --help|-h) show_help;     exit 0 ;;
-  --list)    list_packages; exit 0 ;;
-  --facts)   show_facts;    exit 0 ;;
-esac
-
-ensure_secrets_file
+# packages can read this to know that -y was given
+export DOT_YES="$YES"
 
 # scratch space for this run only (e.g. "apt lists already refreshed")
 export DOT_RUN_DIR="$(mktemp -d)"
 trap cleanup EXIT
+
+cmd="${1:-install}"
+case "$cmd" in
+  --help|-h)  show_help;     exit 0 ;;
+  --list)     list_packages; exit 0 ;;
+  --facts)    show_facts;    exit 0 ;;
+  --packages) shift; packages_with "$@"; exit 0 ;;   # for tab completion
+esac
+
 trap 'echo; log_err "interrupted"; finish || true; exit 130' INT TERM
 
 # drop the command word; what is left are package names
 case "$cmd" in
-  install|upgrade|remove|update|-*) [ $# -gt 0 ] && shift ;;
+  install|configure|upgrade|unconfigure|uninstall|update|run|-*) [ $# -gt 0 ] && shift ;;
 esac
-check_names "$@"
+# `dot run <package> <function>`: the last word is a function name, not a package
+if [ "$cmd" = run ]; then
+  if [ $# -ne 2 ]; then
+    log_err "usage: dot run <package> <function>"
+    exit 1
+  fi
+  check_names "$1"
+else
+  check_names "$@"
+fi
 
 case "$cmd" in
-  install) run_install "$@" ;;
-  upgrade) run_upgrade "$@" ;;
-  remove)  run_remove "$@" ;;
-  update)  run_update ;;
+  install)     run_install "$@" ;;
+  configure)   run_configure "$@" ;;
+  upgrade)     run_upgrade "$@" ;;
+  unconfigure) run_unconfigure "$@" ;;
+  uninstall)   run_uninstall "$@" ;;
+  update)      run_update ;;
+  run)
+    if has_fn "$1" "$2"; then
+      run_pkg "$1" "$2" || true
+    else
+      log_err "$1/setup.sh has no $2()"
+      exit 1
+    fi
+    ;;
   --sync-secrets)
     run_fn sync_secrets $(selected_packages "$@")
     ;;

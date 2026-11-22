@@ -4,10 +4,13 @@ export DOTFILES=$HOME/.dotfiles
 source $ZSH/config/path.zsh
 source $ZSH/config/defaults.zsh
 
+# Machine-only secrets that 1Password itself cannot hand out, such as the
+# service account token that lets `op` work on a server. Never in this repo.
+# Everything else comes from 1Password on demand: plugins/secrets.plugin.zsh
+[ -f "$HOME/.secrets.zsh" ] && source "$HOME/.secrets.zsh"
+
 # add completions (upstream first; custom is additive for tools upstream doesn't ship)
 fpath=($ZSH/completions/src $ZSH/completions-custom $fpath)
-
-source $HOME/.secrets.zsh
 
 # source plugins
 source $ZSH/plugins/utils.plugin.zsh
@@ -19,11 +22,11 @@ done
 # build completions
 autoload -U compinit && compinit
 
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# mise — node, pnpm, rust, neovim and the other tools in mise/config/config.toml
+# (path.zsh already put its shims on PATH, so the plugins above could see them;
+# this switches to the real tool paths and per-directory versions)
+command -v mise >/dev/null && eval "$(mise activate zsh)"
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 
 # go — only where it is installed, and only if GOBIN is actually set

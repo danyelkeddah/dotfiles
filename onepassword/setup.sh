@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# no uninstall(): too much else here depends on 1Password
 
 AGENT="$HOME/.config/1Password/ssh/agent.toml"
 
@@ -6,7 +7,6 @@ install() {
   case "$DOT_PKG" in
     brew)
       pkg_install --cask 1password 1password-cli
-      symlink "$DOTS/onepassword/config/ssh/agent.toml" "$AGENT"
       ;;
     apt)
       if ! pkg_installed 1password-cli; then
@@ -32,6 +32,12 @@ install() {
   esac
 }
 
-remove() {
+# the SSH agent belongs to the desktop app, which this package only installs on macOS
+configure() {
+  [ "$DOT_OS" = macos ] || return 0
+  symlink "$DOTS/onepassword/config/ssh/agent.toml" "$AGENT"
+}
+
+unconfigure() {
   unlink_dot "$AGENT"
 }

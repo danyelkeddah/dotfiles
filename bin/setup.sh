@@ -3,7 +3,7 @@
 
 BIN="$HOME/.local/bin"
 
-install() {
+configure() {
   local script
   mkdir -p "$BIN"
   for script in "$DOTS/bin/scripts/"*; do
@@ -12,7 +12,7 @@ install() {
   done
 }
 
-remove() {
+unconfigure() {
   local script
   for script in "$DOTS/bin/scripts/"*; do
     unlink_dot "$BIN/$(basename "$script")"

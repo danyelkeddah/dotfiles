@@ -19,6 +19,10 @@
 [ -d "$HOME/bin" ] && export PATH=$HOME/bin:$PATH
 [ -d "$HOME/.local/bin" ] && export PATH=$HOME/.local/bin:$PATH
 
+# mise — shims for the tools it installs, so they exist from the first line of
+# .zshrc and in non-interactive shells; .zshrc activates mise properly later
+[ -d "$HOME/.local/share/mise/shims" ] && export PATH=$HOME/.local/share/mise/shims:$PATH
+
 export GOPATH="$HOME/.go"
 [ -d "$GOPATH/bin" ] && export PATH="$PATH:$GOPATH/bin"
 

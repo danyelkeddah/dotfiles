@@ -1,0 +1,62 @@
+# Every development tool I use, installed by mise: the same on macOS, Linux and
+# servers, into ~/.local/share/mise, without root, always the newest release.
+#
+#   dot configure mise   install whatever is listed here and not yet installed
+#   dot upgrade mise     move everything to its newest release
+#
+# Find names with `mise registry` or `mise search <word>`.
+#
+# Not here on purpose:
+#   claude   has its own installer, which keeps itself up to date
+#
+# Worth knowing:
+#   php      mise builds it from source, which takes a couple of minutes. The
+#            mise package installs the libraries the build needs; where it
+#            can't (Linux without root), php is switched off on that machine.
+#            composer comes with it.
+#   tmux     upgrading it under a running tmux server can lock you out of that
+#            server's sessions until it is restarted.
+
+[tools]
+# languages
+go = "latest"
+node = "lts"
+php = "latest"
+pnpm = "latest"
+rust = "latest"
+uv = "latest"
+
+# editor
+neovim = "latest"
+tree-sitter = "latest"
+
+# git
+"npm:diff-so-fancy" = "latest"
+gh = "latest"
+lazygit = "latest"
+
+# command line
+bat = "latest"
+btop = "latest"
+duf = "latest"
+fd = "latest"
+fzf = "latest"
+gum = "latest"
+jq = "latest"
+just = "latest"
+ripgrep = "latest"
+tmux = "latest"
+yq = "latest"
+zoxide = "latest"
+
+# kubernetes and cloud
+awscli = "latest"
+dive = "latest"
+doctl = "latest"
+helm = "latest"
+k9s = "latest"
+kind = "latest"
+kubectl = "latest"
+kustomize = "latest"
+minikube = "latest"
+mkcert = "latest"

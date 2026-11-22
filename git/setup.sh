@@ -1,28 +1,10 @@
 #!/usr/bin/env bash
+# lazygit and diff-so-fancy are installed by mise.
+# No uninstall(): everything else on the machine uses git.
+DEPS=(mise)
 
 BIN="$HOME/.local/bin"
 SIGNERS="$HOME/.config/git/allowed_signers"
-
-# the official release binary, into ~/.local/bin (needs no root)
-lazygit_download() {
-  local arch version tmp
-  case "$DOT_ARCH" in
-    x86_64) arch=x86_64 ;;
-    arm64)  arch=arm64 ;;
-    *)      log_err "no lazygit release for $DOT_ARCH"; return 1 ;;
-  esac
-
-  log_info "downloading lazygit..."
-  version="$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest \
-    | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/')"
-  tmp="$(mktemp -d)"
-  curl -fLo "$tmp/lazygit.tar.gz" \
-    "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${version}_Linux_${arch}.tar.gz"
-  tar -xf "$tmp/lazygit.tar.gz" -C "$tmp" lazygit
-  mkdir -p "$BIN"
-  mv "$tmp/lazygit" "$BIN/lazygit"
-  rm -rf "$tmp"
-}
 
 # a single shell script, into ~/.local/bin
 git_quick_stats_download() {
@@ -46,26 +28,6 @@ github_ssh_works() {
 install() {
   pkg_install git
 
-  # ── diff-so-fancy ───────────────────────────────────────────────────────────
-  # on apt it comes from a PPA, which only exists for Ubuntu
-  if [ "$DOT_PKG" = apt ] && ! pkg_installed diff-so-fancy; then
-    apt_add_ppa ppa:aos1/diff-so-fancy
-  fi
-  # (not fatal: without it git simply keeps its normal pager, see below)
-  pkg_install diff-so-fancy || log_warn "diff-so-fancy could not be installed"
-
-  # ── lazygit ─────────────────────────────────────────────────────────────────
-  case "$DOT_PKG" in
-    brew|pacman) pkg_install lazygit ;;
-    *)
-      if command -v lazygit >/dev/null; then
-        log_ok "lazygit (already installed)"
-      else
-        lazygit_download
-      fi
-      ;;
-  esac
-
   # ── git-quick-stats ─────────────────────────────────────────────────────────
   case "$DOT_PKG" in
     brew) pkg_install git-quick-stats ;;
@@ -78,6 +40,9 @@ install() {
       ;;
   esac
 
+}
+
+configure() {
   # ── known hosts ─────────────────────────────────────────────────────────────
   if ! command -v ssh-keygen >/dev/null; then
     log_warn "ssh is not installed — github.com not added to known hosts"
@@ -134,13 +99,13 @@ install() {
 }
 
 upgrade() {
-  # only the copies this package downloaded; packaged ones are upgraded by the system
-  [ -x "$BIN/lazygit" ] && lazygit_download
+  # only the copy this package downloaded; a packaged one is upgraded by the system
   [ -x "$BIN/git-quick-stats" ] && git_quick_stats_download
   return 0
 }
 
-remove() {
+# git's global settings are left as they are
+unconfigure() {
   unlink_dot "$HOME/.config/git/templates"
 }
 

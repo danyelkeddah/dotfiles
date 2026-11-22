@@ -103,6 +103,46 @@ pkg_install() {
   esac
 }
 
+# pkg_uninstall [--cask] <name>... — remove packages with the system package
+# manager. Names are the ones this manager uses; what isn't installed is skipped.
+#
+# On apt and pacman this deliberately does not pass -y / --noconfirm: the
+# package manager lists anything else that depends on these and would go with
+# them, and you get to say no. So it needs a terminal.
+pkg_uninstall() {
+  local cask="" installed="" name
+  if [ "$1" = --cask ]; then cask=1; shift; fi
+
+  for name in "$@"; do
+    if pkg_installed ${cask:+--cask} "$name"; then installed="$installed $name"; fi
+  done
+  [ -n "$installed" ] || return 0
+
+  case "$DOT_PKG" in
+    brew)
+      # one at a time: brew refuses a formula that another one still needs,
+      # and that must not stop the rest
+      for name in $installed; do
+        brew uninstall ${cask:+--cask} "$name" \
+          || log_warn "kept $name — brew says something still needs it"
+      done
+      ;;
+    apt|pacman|dnf)
+      if [ "$DOT_ROOT" = no ]; then
+        log_warn "no root access — still installed:$installed"
+      elif [ ! -t 0 ]; then
+        log_warn "nobody to confirm with — still installed:$installed"
+      else
+        case "$DOT_PKG" in
+          apt)    as_root apt-get remove $installed ;;
+          pacman) as_root pacman -R $installed ;;
+          dnf)    as_root dnf remove $installed ;;
+        esac || log_warn "nothing was removed"
+      fi
+      ;;
+  esac
+}
+
 # apt_add_repo <name> <key url> <repo line>
 #
 #   apt_add_repo charm https://repo.charm.sh/apt/gpg.key "https://repo.charm.sh/apt/ * *"
@@ -140,24 +180,6 @@ apt_add_repo() {
   echo "deb [arch=$(dpkg --print-architecture) signed-by=$key] $line" \
     | as_root tee "$list" >/dev/null
 
-  # the package lists must be read again to see the new repo
-  rm -f "$DOT_RUN_DIR/apt-updated"
-}
-
-# apt_add_ppa <ppa:owner/name> — add an Ubuntu PPA. PPAs only exist for
-# Ubuntu, so elsewhere (and without root) this warns and does nothing.
-apt_add_ppa() {
-  if [ "$DOT_ROOT" = no ]; then
-    log_warn "no root access — $1 not added"
-    return 0
-  fi
-  if ! command -v add-apt-repository >/dev/null; then
-    log_warn "add-apt-repository not found — $1 not added"
-    return 0
-  fi
-
-  log_info "adding $1..."
-  as_root add-apt-repository -y "$1"
   # the package lists must be read again to see the new repo
   rm -f "$DOT_RUN_DIR/apt-updated"
 }

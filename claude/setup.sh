@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# not from mise: claude's own installer keeps itself up to date
 
 install() {
   if command -v claude >/dev/null; then

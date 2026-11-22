@@ -1,45 +1,8 @@
 #!/usr/bin/env bash
 # _shared/os.sh
+#
+# Linking config files into place, and taking them out again.
 
-
-export SECRETS_FILE="$HOME/.secrets.zsh"
-
-# upsert_secret <KEY> <value> — add or replace `export KEY="value"`
-upsert_secret() {
-  local key="$1" value="$2" action=added
-
-  if grep -q "^export $key=" "$SECRETS_FILE"; then
-    action=updated
-    drop_secret_line "$key"
-  fi
-  echo "export $key=\"$value\"" >> "$SECRETS_FILE"
-  log_ok "$action $key"
-}
-
-# remove_secret <KEY>
-remove_secret() {
-  local key="$1"
-
-  if grep -q "^export $key=" "$SECRETS_FILE"; then
-    drop_secret_line "$key"
-    log_ok "removed $key"
-  else
-    log_info "$key not found — skipping"
-  fi
-}
-
-# rewrite the file without KEY's line. Done with grep rather than `sed -i`,
-# whose syntax differs between macOS and Linux and which breaks on values
-# containing its delimiter. `cat >` keeps the file's permissions.
-drop_secret_line() {
-  local rest
-  rest="$(grep -v "^export $1=" "$SECRETS_FILE" || true)"
-  if [ -n "$rest" ]; then
-    printf '%s\n' "$rest" > "$SECRETS_FILE"
-  else
-    : > "$SECRETS_FILE"
-  fi
-}
 
 # ── Symlink ───────────────────────────────────────────────────────────────────
 
@@ -61,8 +24,13 @@ symlink() {
     fi
   fi
 
-  # exists but is a real file — back it up
-  [ -e "$dest" ] && [ ! -L "$dest" ] && mv "$dest" "$dest.bak"
+  # exists but is a real file — move it aside. The time in the name keeps an
+  # older backup from being overwritten by a newer one.
+  if [ -e "$dest" ]; then
+    local backup="$dest.bak.$(date +%Y%m%d-%H%M%S)"
+    mv "$dest" "$backup"
+    log_info "existing file kept as: $backup"
+  fi
 
   ln -sf "$src" "$dest"
   log_ok "linked: $dest"
@@ -71,7 +39,7 @@ symlink() {
 # unlink_dot <path> — undo a symlink() call.
 # Only removes a symlink that points into this repo. Real files, and links to
 # anywhere else, are left alone. If symlink() moved an existing file aside as
-# <path>.bak, that file is put back.
+# <path>.bak.<time>, the newest of those is put back.
 unlink_dot() {
   local dest="${1/#\~/$HOME}"
   local target
@@ -97,8 +65,14 @@ unlink_dot() {
   rm "$dest"
   log_ok "unlinked: $dest"
 
-  if [ -e "$dest.bak" ]; then
-    mv "$dest.bak" "$dest"
-    log_ok "restored: $dest"
+  # names sort by time, so the last match is the newest backup
+  # (a plain .bak is what symlink() used to make)
+  local backup newest=""
+  for backup in "$dest.bak" "$dest.bak."*; do
+    [ -e "$backup" ] && newest="$backup"
+  done
+  if [ -n "$newest" ]; then
+    mv "$newest" "$dest"
+    log_ok "restored: $dest (from ${newest##*/})"
   fi
 }

@@ -13,3 +13,7 @@ install() {
 upgrade() {
   pnpm add -g --ignore-scripts @earendil-works/pi-coding-agent@latest
 }
+
+uninstall() {
+  pnpm remove -g @earendil-works/pi-coding-agent
+}

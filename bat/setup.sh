@@ -1,23 +1,14 @@
 #!/usr/bin/env bash
+# bat itself is installed by mise; this package links its config and theme
+DEPS=(mise)
 
 THEME="$DOTS/bat/config/themes/Catppuccin Mocha.tmTheme"
 
-install() {
-  pkg_install bat
-
-  # Debian and Ubuntu install the binary as `batcat`
-  if ! command -v bat >/dev/null && command -v batcat >/dev/null; then
-    mkdir -p "$HOME/.local/bin"
-    ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
-    log_ok "linked: batcat → ~/.local/bin/bat"
-  fi
-
+configure() {
   symlink "$DOTS/bat/config" "$HOME/.config/bat"
 
-  if command -v bat >/dev/null; then
-    log_info "building bat cache..."
-    bat cache --build
-  fi
+  log_info "building bat cache..."
+  bat cache --build
 }
 
 # the theme file is kept in this repo; this fetches the latest copy of it
@@ -28,6 +19,6 @@ upgrade() {
   bat cache --build
 }
 
-remove() {
+unconfigure() {
   unlink_dot "$HOME/.config/bat"
 }

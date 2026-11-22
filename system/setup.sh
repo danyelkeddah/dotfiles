@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 only_on macos
 
-install() {
+configure() {
   # one setting that this macOS version refuses must not stop all the others
   set +e
 

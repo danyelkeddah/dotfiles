@@ -113,17 +113,13 @@ export DOT_OS DOT_DISTRO DOT_PKG DOT_ARCH DOT_ENV DOT_ROOT
 
 # ── only_on ───────────────────────────────────────────────────────────────────
 
-# only_on <word>... — skip this package unless the machine matches.
-#
-#   only_on macos              macOS only
-#   only_on linux desktop      Linux AND a desktop
-#   only_on arch debian        Arch OR Debian family
+# platform_matches <word>... — does this machine match?
 #
 # Words of the same kind are alternatives; different kinds must all match.
 #   os:      macos linux
 #   distro:  arch debian fedora
 #   env:     desktop headless wsl container
-only_on() {
+platform_matches() {
   local os="" distro="" env="" word
   for word in "$@"; do
     case "$word" in
@@ -134,14 +130,25 @@ only_on() {
     esac
   done
 
-  if { [ -n "$os" ]     && [[ " $os " != *" $DOT_OS "* ]]; } \
-  || { [ -n "$distro" ] && [[ " $distro " != *" $DOT_DISTRO "* ]]; } \
-  || { [ -n "$env" ]    && [[ " $env " != *" $DOT_ENV "* ]]; }; then
-    log_info "skipped — only on: $*"
-    # tell dot this was a skip, not a success. A marker file rather than a
-    # special exit code: any code could also come from a failing command
-    # (apt-get exits 100).
-    : > "$DOT_RUN_DIR/skipped"
-    exit 0
-  fi
+  { [ -z "$os" ]     || [[ " $os " == *" $DOT_OS "* ]]; } \
+  && { [ -z "$distro" ] || [[ " $distro " == *" $DOT_DISTRO "* ]]; } \
+  && { [ -z "$env" ]    || [[ " $env " == *" $DOT_ENV "* ]]; }
+}
+
+# only_on <word>... — at the top of a setup.sh: skip this package unless the
+# machine matches. dot also loads each file to see whether only_on stops it,
+# and leaves packages that don't apply out of the picker.
+#
+#   only_on macos              macOS only
+#   only_on linux desktop      Linux AND a desktop
+#   only_on arch debian        Arch OR Debian family
+only_on() {
+  platform_matches "$@" && return 0
+
+  log_info "skipped — only on: $*"
+  # tell dot this was a skip, not a success. A marker file rather than a
+  # special exit code: any code could also come from a failing command
+  # (apt-get exits 100).
+  : > "$DOT_RUN_DIR/skipped"
+  exit 0
 }

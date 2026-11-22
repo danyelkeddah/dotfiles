@@ -47,17 +47,20 @@ curl -fsSL https://raw.githubusercontent.com/danyelkeddah/dotfiles/main/install.
 
 ```sh
 dot                       # choose packages to install (type to search, Tab to toggle)
-dot tmux zsh              # install specific packages
+dot tmux zsh              # install specific packages: get the software, then configure it
 dot -y                    # install everything without asking
-dot update                # pull this repo, then install everything again
+dot configure nvim        # only link config and apply settings
 dot upgrade               # upgrade the system's packages, then each package
-dot upgrade nvim          # upgrade one package only
-dot remove tmux           # undo a package's config (does not uninstall software)
+dot upgrade mise          # upgrade one package only
+dot unconfigure tmux      # undo a package's config, keep the software
+dot uninstall tmux        # undo the config, then remove the software
+dot update                # pull this repo, then install everything again
 
 dot --list                # list packages
 dot --facts               # show what dot detected about this machine
-dot --sync-secrets        # write secrets from 1Password
+dot --sync-secrets        # write secret files from 1Password
 dot --remove-secrets      # remove them again
+dot run <package> <function>   # run any one function of a package
 dot --help
 ```
 
@@ -66,15 +69,19 @@ Tab completion for zsh is included.
 ## How it works
 
 Every folder with a `setup.sh` is a package. A package is a few plain
-functions, and `dot` calls the one it needs:
+functions, and `dot` calls the ones it needs:
 
 ```bash
 # tmux/setup.sh
+DEPS=(mise)                       # tmux itself comes from mise
+
 TPM="$HOME/.config/tmux/plugins/tpm"
 
 install() {
-  pkg_install tmux git
   [ -d "$TPM" ] || git clone https://github.com/tmux-plugins/tpm "$TPM"
+}
+
+configure() {
   symlink "$DOTS/tmux/config/tmux.conf" "$HOME/.config/tmux/tmux.conf"
 }
 
@@ -82,14 +89,28 @@ upgrade() {
   git -C "$TPM" pull --ff-only
 }
 
-remove() {
+unconfigure() {
   unlink_dot "$HOME/.config/tmux/tmux.conf"
+}
+
+uninstall() {
+  rm -rf "$HOME/.config/tmux/plugins"
 }
 ```
 
-Only `install()` is required. `upgrade()`, `remove()`, `sync_secrets()` and
-`remove_secrets()` are optional. There is no hidden behaviour: what a package
-does is what its functions say.
+| Function | Meaning | Run by |
+| --- | --- | --- |
+| `install` | get the software | `dot install` |
+| `configure` | link config, apply settings | `dot install`, `dot configure` |
+| `upgrade` | move to a newer version | `dot upgrade` |
+| `unconfigure` | undo `configure` | `dot unconfigure`, `dot uninstall` |
+| `uninstall` | remove the software | `dot uninstall` |
+| `sync_secrets`, `remove_secrets` | write and remove secret files | `dot --sync-secrets`, `dot --remove-secrets` |
+
+All of them are optional: a package defines the ones that mean something for
+it. Packages whose software is shared with the rest of the system, like `git`
+and `zsh`, have no `uninstall` on purpose. There is no hidden behaviour: what a
+package does is what its functions say.
 
 The helpers packages can use live in `_shared/`:
 
@@ -98,6 +119,7 @@ The helpers packages can use live in `_shared/`:
 | `pkg_install tmux`                          | install with the system package manager (brew, apt, pacman, dnf); skips what is already installed |
 | `pkg_install fd apt=fd-find`                | same, where one manager uses a different name                                                     |
 | `pkg_install --cask ghostty`                | a Homebrew cask                                                                                   |
+| `pkg_uninstall tmux` | remove it again; on apt and pacman the package manager asks first |
 | `only_on macos`                             | skip the whole package on other machines                                                          |
 | `symlink <from> <to>`                       | link a file into place, backing up what was there                                                 |
 | `unlink_dot <path>`                         | remove such a link again, restoring the backup                                                    |
@@ -106,7 +128,28 @@ The helpers packages can use live in `_shared/`:
 Language package managers (`pnpm`, `cargo`, `composer`) are the same on every
 system, so packages call those directly.
 
-A package that needs another one first says so with `DEPS=(rust)` at the top.
+A package that needs another one first says so with `DEPS=(mise)` at the top.
+
+### Tools come from mise
+
+Languages and most command-line tools are not installed one package at a time.
+They are listed in one file, [`mise/config/config.toml`](mise/config/config.toml),
+and [mise](https://mise.jdx.dev) installs them: go, node, php, pnpm, rust,
+neovim, tmux, fzf, ripgrep, gh, lazygit, kubectl, k9s and the rest. It works
+the same on macOS and Linux and always takes the newest release. Almost all of
+it needs no root. php is the exception: mise builds it from source, so on
+Linux without root it is left out.
+
+```sh
+dot configure mise  # install whatever the file lists and isn't there yet
+dot upgrade mise    # move everything to its newest release
+```
+
+Packages such as `nvim` or `k9s` then only link their config.
+
+A machine that was set up before mise took over still has the old copies (nvm,
+brew and apt packages, downloaded binaries). `dot run mise cleanup_old` lists
+them and asks before removing them.
 
 ### Layout
 
@@ -115,7 +158,7 @@ dot              the runner
 install.sh       bootstrap for a bare machine (POSIX sh)
 _shared/         helpers: platform detection, package installs, links, output
 <package>/
-  setup.sh       install(), upgrade(), remove(), ...
+  setup.sh       install(), configure(), upgrade(), ...
   config/        the files that get linked into place
 ```
 
@@ -129,7 +172,7 @@ _shared/         helpers: platform detection, package installs, links, output
 | Arch                 | installs tested in clean containers                                          |
 | Fedora               | detection and the basics tested; several packages are not set up for it      |
 | macOS                | what I use, but with no automated tests: I find the breakage by hitting it   |
-| Servers without root | supported: what needs root is skipped with a warning, config is still linked |
+| Servers without root | supported: mise installs the tools into your home folder, what needs root is skipped with a warning, config is still linked |
 | Windows              | no. Use WSL.                                                                 |
 
 On a machine with no GitHub SSH key, GitHub URLs stay on https. With a key,
@@ -137,9 +180,17 @@ everything goes over SSH.
 
 ## Secrets
 
-No secret values are stored in this repo. Packages hold references into my
-1Password vaults, and `dot --sync-secrets` reads them with the `op` CLI and
-writes them to files outside the repo, such as `~/.secrets.zsh`.
+No secret values are stored in this repo, only references into my 1Password
+vaults.
+
+- **Keys for commands** are not kept in the shell's environment. A command that
+  needs one is started through `with-secrets`, which asks 1Password for the
+  values in `zsh/config/zsh/secrets.refs` and gives them to that one process.
+- **Secret files** (the git signers file, a licence key) are written outside
+  the repo by `dot --sync-secrets`.
+- **`~/.secrets.zsh`** is for what 1Password cannot hand out itself, such as
+  the service account token that lets `op` work on a server. It is created by
+  hand on that machine and never committed.
 
 ## Using any of this
 

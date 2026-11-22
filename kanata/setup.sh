@@ -72,6 +72,9 @@ install() {
   sudo /Applications/.Karabiner-VirtualHIDDevice-Manager.app/Contents/MacOS/Karabiner-VirtualHIDDevice-Manager forceActivate || \
     log_warn "activation needs approval in System Settings"
 
+}
+
+configure() {
   log_info "installing config and LaunchDaemons..."
   sudo mkdir -p /etc/kanata
   sudo install -m 0644 "$DOTS/kanata/config/kanata.kbd" /etc/kanata/kanata.kbd
