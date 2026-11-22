@@ -1,3 +1,4 @@
+# the basics every machine gets, servers included
 zsh
 bash
 git
@@ -11,22 +12,8 @@ zip
 make
 gcc
 build-essential
-nmap
-mosh
-telnet
-dnsmasq
-openvpn
 python3
 python3-pip
 python3-venv
-mysql-server
-redis-server
-postgresql
-docker.io
-docker-compose
 ca-certificates
 gnupg
-subversion
-imagemagick
-ffmpeg
-transmission-cli

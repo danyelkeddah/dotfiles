@@ -1,0 +1,10 @@
+# media, network and other tools I only want on a machine I sit at
+ffmpeg
+imagemagick
+transmission-cli
+openvpn
+dnsmasq
+nmap
+mosh
+telnet
+subversion

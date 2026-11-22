@@ -1,0 +1,6 @@
+# databases and docker: background services for a machine I develop on
+mysql-server
+redis-server
+postgresql
+docker.io
+docker-compose
