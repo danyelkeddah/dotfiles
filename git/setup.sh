@@ -33,6 +33,16 @@ git_quick_stats_download() {
   chmod +x "$BIN/git-quick-stats"
 }
 
+# can this machine log in to GitHub over SSH? (GitHub answers "successfully
+# authenticated" and then closes the connection, so the exit code is no help)
+github_ssh_works() {
+  local answer
+  command -v ssh >/dev/null || return 1
+  # ssh exits 1 even on success here, hence `|| true` and reading the text
+  answer="$(ssh -o BatchMode=yes -o ConnectTimeout=5 -T git@github.com 2>&1 || true)"
+  [[ "$answer" == *"successfully authenticated"* ]]
+}
+
 install() {
   pkg_install git
 
@@ -41,7 +51,8 @@ install() {
   if [ "$DOT_PKG" = apt ] && ! pkg_installed diff-so-fancy; then
     apt_add_ppa ppa:aos1/diff-so-fancy
   fi
-  pkg_install diff-so-fancy
+  # (not fatal: without it git simply keeps its normal pager, see below)
+  pkg_install diff-so-fancy || log_warn "diff-so-fancy could not be installed"
 
   # ── lazygit ─────────────────────────────────────────────────────────────────
   case "$DOT_PKG" in
@@ -95,13 +106,31 @@ install() {
   git config --global gpg.ssh.allowedSignersFile            "$SIGNERS"
   git config --global core.editor                           nvim
   git config --global core.excludesfile                     "$HOME/.config/git/templates/gitignore_global"
-  git config --global core.pager                            "diff-so-fancy | less --tabs=4 -RFX"
+  # only where it exists — a pager that is missing breaks every git diff and log
+  if command -v diff-so-fancy >/dev/null; then
+    git config --global core.pager                          "diff-so-fancy | less --tabs=4 -RFX"
+  else
+    git config --global --unset-all core.pager || true
+    log_warn "diff-so-fancy is not installed — git keeps its normal pager"
+  fi
   git config --global fetch.prune                           true
   git config --global push.autoSetupRemote                  true
   git config --global commit.gpgsign                        true
   git config --global commit.template                       "$HOME/.config/git/templates/gitmessage"
   git config --global pull.rebase                           true
-  git config --global "url.ssh://git@github.com/.insteadOf" "https://github.com/"
+
+  # ── GitHub over SSH ─────────────────────────────────────────────────────────
+  # Rewrite every GitHub https URL to SSH — but only where SSH to GitHub works.
+  # On a machine without a key the rewrite would break every clone, including
+  # the ones dot and nvim make.
+  if github_ssh_works; then
+    git config --global "url.ssh://git@github.com/.insteadOf" "https://github.com/"
+    log_ok "GitHub URLs use SSH"
+  else
+    git config --global --unset-all "url.ssh://git@github.com/.insteadOf" || true
+    log_warn "no GitHub SSH access here — GitHub URLs stay on https"
+    log_warn "after adding a key, run: dot git"
+  fi
 }
 
 upgrade() {

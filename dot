@@ -46,9 +46,8 @@ RESULTS=""
 # -y / --yes: don't ask, just do it
 YES=""
 
-# Exit codes a package can hand back besides 0 (ok) and "anything else" (failed).
-RC_SKIPPED=100   # only_on said this machine doesn't qualify
-RC_NO_FN=101     # the package doesn't define the requested function
+# call_fn exits with this when the package doesn't define the function
+RC_NO_FN=127
 
 # ── Packages ──────────────────────────────────────────────────────────────────
 
@@ -94,7 +93,7 @@ call_fn() {
   bash -c '
     set -eo pipefail
     source "$1"
-    declare -F "$2" >/dev/null || exit '"$RC_NO_FN"'
+    declare -F "$2" >/dev/null || { log_err "$1 has no $2()"; exit '"$RC_NO_FN"'; }
     "$2"
   ' _ "$DOTS/$1/setup.sh" "$2"
 }
@@ -118,19 +117,20 @@ run_pkg() {
 
   log_header "$name"
 
+  rm -f "$DOT_RUN_DIR/skipped"
   call_fn "$name" "$fn" || rc=$?
-
   secs=$((SECONDS - start))
-  case "$rc" in
-    0)             log_ok "$name · ${secs}s"; record "$name" ok "$secs" ;;
-    "$RC_SKIPPED") record "$name" skipped "$secs" ;;   # only_on already said why
-    *)
-      [ "$rc" = "$RC_NO_FN" ] && log_err "$name/setup.sh has no $fn()"
-      log_err "$name failed · ${secs}s"
-      record "$name" failed "$secs"
-      return 1
-      ;;
-  esac
+
+  if [ "$rc" != 0 ]; then
+    log_err "$name failed · ${secs}s"
+    record "$name" failed "$secs"
+    return 1
+  elif [ -f "$DOT_RUN_DIR/skipped" ]; then
+    record "$name" skipped "$secs"   # only_on left the marker and said why
+  else
+    log_ok "$name · ${secs}s"
+    record "$name" ok "$secs"
+  fi
 }
 
 # ── install ───────────────────────────────────────────────────────────────────

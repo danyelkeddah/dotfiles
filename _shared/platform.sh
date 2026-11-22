@@ -138,6 +138,10 @@ only_on() {
   || { [ -n "$distro" ] && [[ " $distro " != *" $DOT_DISTRO "* ]]; } \
   || { [ -n "$env" ]    && [[ " $env " != *" $DOT_ENV "* ]]; }; then
     log_info "skipped — only on: $*"
-    exit 100   # dot reads 100 as "skipped", not as a failure
+    # tell dot this was a skip, not a success. A marker file rather than a
+    # special exit code: any code could also come from a failing command
+    # (apt-get exits 100).
+    : > "$DOT_RUN_DIR/skipped"
+    exit 0
   fi
 }
