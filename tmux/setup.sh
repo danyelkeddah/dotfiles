@@ -1,23 +1,27 @@
 #!/usr/bin/env bash
-DEPS=(homebrew)
 
-if ! command -v tmux &>/dev/null; then
-  log_info "installing tmux..."
-  if is_macos;    then brew install tmux
-  elif is_arch;   then sudo pacman -S --needed --noconfirm tmux
-  elif is_ubuntu; then sudo apt install -y tmux
+TPM="$HOME/.config/tmux/plugins/tpm"
+
+install() {
+  pkg_install tmux git
+
+  if [ ! -d "$TPM" ]; then
+    log_info "installing tpm..."
+    git clone https://github.com/tmux-plugins/tpm "$TPM"
+  else
+    log_ok "tpm (already installed)"
   fi
-else
-  log_info "tmux already installed — skipping"
-fi
 
-if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
-  log_info "installing tpm..."
-  git clone https://github.com/tmux-plugins/tpm "$HOME/.config/tmux/plugins/tpm"
-else
-  log_info "tpm already installed — skipping"
-fi
+  symlink "$DOTS/tmux/config/tmux.conf" "$HOME/.config/tmux/tmux.conf"
+  symlink "$DOTS/tmux/config/themes"    "$HOME/.config/tmux/themes"
+}
 
-log_info "symlinking tmux config..."
-symlink "$DOTS/tmux/config/tmux.conf" "$HOME/.config/tmux/tmux.conf"
-symlink "$DOTS/tmux/config/themes"    "$HOME/.config/tmux/themes"
+upgrade() {
+  log_info "updating tpm..."
+  git -C "$TPM" pull --ff-only
+}
+
+remove() {
+  unlink_dot "$HOME/.config/tmux/tmux.conf"
+  unlink_dot "$HOME/.config/tmux/themes"
+}

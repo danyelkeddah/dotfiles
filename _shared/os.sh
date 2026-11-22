@@ -70,3 +70,38 @@ symlink() {
   ln -sf "$src" "$dest"
   log_ok "linked: $dest"
 }
+
+# unlink_dot <path> — undo a symlink() call.
+# Only removes a symlink that points into this repo. Real files, and links to
+# anywhere else, are left alone. If symlink() moved an existing file aside as
+# <path>.bak, that file is put back.
+unlink_dot() {
+  local dest="${1/#\~/$HOME}"
+  local target
+
+  if [ ! -L "$dest" ]; then
+    if [ -e "$dest" ]; then
+      log_warn "$dest is a real file, not a link — left alone"
+    else
+      log_info "$dest not there — skipping"
+    fi
+    return 0
+  fi
+
+  target="$(readlink "$dest")"
+  case "$target" in
+    "$DOTS"/*) ;;
+    *)
+      log_warn "$dest points outside the dotfiles ($target) — left alone"
+      return 0
+      ;;
+  esac
+
+  rm "$dest"
+  log_ok "unlinked: $dest"
+
+  if [ -e "$dest.bak" ]; then
+    mv "$dest.bak" "$dest"
+    log_ok "restored: $dest"
+  fi
+}

@@ -18,10 +18,12 @@ export DOTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$DOTS/_shared/os.sh"
 source "$DOTS/_shared/platform.sh"
+source "$DOTS/_shared/pkg.sh"
 
 export -f log_ok log_err log_info log_warn log_header \
   is_macos is_arch is_ubuntu only_on \
-  symlink upsert_secret remove_secret
+  symlink unlink_dot upsert_secret remove_secret \
+  as_root pkg_installed pkg_install
 
 # These always run first on a full install, in this order.
 PREFLIGHT="homebrew packages"
@@ -161,10 +163,6 @@ run_fn() {
   done
 }
 
-as_root() {
-  if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi
-}
-
 system_upgrade() {
   log_header "system"
   if [ "$DOT_PKG" != brew ] && [ "$DOT_ROOT" = no ]; then
@@ -225,6 +223,7 @@ run_update() {
   git -C "$DOTS" pull --ff-only
   log_ok "dotfiles up to date"
   # start again so the freshly pulled dot does the installing
+  rm -rf "$DOT_RUN_DIR"
   exec "$DOTS/dot" install
 }
 
@@ -296,6 +295,10 @@ case "$cmd" in
 esac
 
 ensure_secrets_file
+
+# scratch space for this run only (e.g. "apt lists already refreshed")
+export DOT_RUN_DIR="$(mktemp -d)"
+trap 'rm -rf "$DOT_RUN_DIR"' EXIT
 
 # drop the command word; what is left are package names
 case "$cmd" in
