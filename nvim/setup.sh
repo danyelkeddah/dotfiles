@@ -1,43 +1,58 @@
 #!/usr/bin/env bash
-DEPS=(homebrew packages rust)
+DEPS=(rust)
 
-log_info "installing latest neovim..."
+NVIM_DIR="$HOME/.opt/nvim"
 
-# Neovim publishes arm64 assets but Linux `uname -m` returns aarch64 — normalize
-arch="$(uname -m | sed 's/aarch64/arm64/')"
+# the official release build, unpacked into ~/.opt/nvim (needs no root).
+# The config needs a newer Neovim than most package managers ship.
+nvim_download() {
+  local asset
+  case "$DOT_OS" in
+    macos) asset="nvim-macos-$DOT_ARCH" ;;
+    *)     asset="nvim-linux-$DOT_ARCH" ;;
+  esac
 
-if is_macos; then
-  brew uninstall neovim &>/dev/null || true
-  asset="nvim-macos-$arch"
-elif is_arch; then
-  sudo pacman -R --noconfirm neovim &>/dev/null || true
-  asset="nvim-linux-$arch"
-elif is_ubuntu; then
-  sudo apt-get remove -y neovim neovim-runtime &>/dev/null || true
-  asset="nvim-linux-$arch"
-fi
+  log_info "downloading latest neovim..."
+  rm -rf "$NVIM_DIR.new"
+  mkdir -p "$NVIM_DIR.new"
+  curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/$asset.tar.gz" \
+    | tar -xzf - -C "$NVIM_DIR.new" --strip-components=1
+  rm -rf "$NVIM_DIR"
+  mv "$NVIM_DIR.new" "$NVIM_DIR"
 
-rm -rf "$HOME/.opt/nvim"
-mkdir -p "$HOME/.opt/nvim"
-curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/$asset.tar.gz" \
-  | tar -xzf - -C "$HOME/.opt/nvim" --strip-components=1
+  mkdir -p "$HOME/.local/bin"
+  ln -sf "$NVIM_DIR/bin/nvim" "$HOME/.local/bin/nvim"
+}
 
-symlink "$HOME/.opt/nvim/bin/nvim" "$HOME/.local/bin/nvim"
-log_ok "neovim installed"
-
-if ! command -v tree-sitter &>/dev/null; then
-  log_info "installing tree-sitter CLI..."
-  if is_macos; then
-    brew install tree-sitter
-  elif is_arch; then
-    sudo pacman -S --needed --noconfirm tree-sitter
-  elif is_ubuntu; then
-    source "$HOME/.cargo/env"
-    cargo install tree-sitter-cli
+install() {
+  if [ -x "$NVIM_DIR/bin/nvim" ]; then
+    log_ok "neovim (already installed)"
+  else
+    nvim_download
   fi
-else
-  log_info "tree-sitter already installed — skipping"
-fi
 
-log_info "symlinking neovim config..."
-symlink "$DOTS/nvim/config" "$HOME/.config/nvim"
+  if command -v tree-sitter >/dev/null; then
+    log_ok "tree-sitter (already installed)"
+  else
+    case "$DOT_PKG" in
+      brew)   pkg_install tree-sitter ;;
+      pacman) pkg_install tree-sitter-cli ;;
+      *)
+        # built from source, which needs a C compiler
+        pkg_install gcc apt=build-essential
+        log_info "installing tree-sitter CLI..."
+        cargo install tree-sitter-cli
+        ;;
+    esac
+  fi
+
+  symlink "$DOTS/nvim/config" "$HOME/.config/nvim"
+}
+
+upgrade() {
+  nvim_download
+}
+
+remove() {
+  unlink_dot "$HOME/.config/nvim"
+}

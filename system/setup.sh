@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
+only_on macos
 
-if is_macos; then
+install() {
+  # one setting that this macOS version refuses must not stop all the others
+  set +e
 
   # ── Power ─────────────────────────────────────────────────────────────────
   log_info "configuring power settings..."
@@ -256,4 +259,4 @@ if is_macos; then
   done
 
   log_ok "system defaults applied — some changes require a logout to take effect"
-fi
+}

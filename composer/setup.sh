@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-DEPS=(homebrew php)
+DEPS=(php)
 
-if ! command -v composer &>/dev/null; then
-  log_info "installing composer..."
-  if is_macos; then
-    brew install composer
-  elif is_arch; then
-    sudo pacman -S --needed --noconfirm composer
-  elif is_ubuntu; then
-    sudo apt install -y composer
+install() {
+  pkg_install composer
+
+  if ! command -v composer >/dev/null; then
+    log_warn "composer is not installed — skipping laravel/installer"
+    return 0
   fi
-else
-  log_info "composer already installed — skipping"
-fi
+  composer global require laravel/installer
+}
 
-composer global require laravel/installer
+upgrade() {
+  composer global update
+}

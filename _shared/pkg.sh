@@ -143,3 +143,21 @@ apt_add_repo() {
   # the package lists must be read again to see the new repo
   rm -f "$DOT_RUN_DIR/apt-updated"
 }
+
+# apt_add_ppa <ppa:owner/name> — add an Ubuntu PPA. PPAs only exist for
+# Ubuntu, so elsewhere (and without root) this warns and does nothing.
+apt_add_ppa() {
+  if [ "$DOT_ROOT" = no ]; then
+    log_warn "no root access — $1 not added"
+    return 0
+  fi
+  if ! command -v add-apt-repository >/dev/null; then
+    log_warn "add-apt-repository not found — $1 not added"
+    return 0
+  fi
+
+  log_info "adding $1..."
+  as_root add-apt-repository -y "$1"
+  # the package lists must be read again to see the new repo
+  rm -f "$DOT_RUN_DIR/apt-updated"
+}

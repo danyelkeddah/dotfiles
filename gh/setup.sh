@@ -1,30 +1,27 @@
 #!/usr/bin/env bash
-DEPS=(homebrew)
 
-if ! command -v gh &>/dev/null; then
-  log_info "installing gh..."
-  if is_macos; then
-    brew tap github/gh
-    brew install gh
-  elif is_arch; then
-    sudo pacman -S --needed --noconfirm github-cli
-  elif is_ubuntu; then
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-      | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-      | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-    sudo apt update
-    sudo apt install -y gh
+install() {
+  # not in Debian/Ubuntu's own repos — comes from GitHub's
+  if [ "$DOT_PKG" = apt ] && ! pkg_installed gh; then
+    apt_add_repo github-cli \
+      https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      "https://cli.github.com/packages stable main"
   fi
-else
-  log_info "gh already installed — skipping"
-fi
+  pkg_install gh pacman=github-cli
 
+  command -v gh >/dev/null || return 0
 
-if ! gh extension list | grep -q "dlvhdr/gh-dash"; then
-  log_info "installing gh-dash..."
-  gh extension install dlvhdr/gh-dash
-else
-  log_info "upgrading gh-dash..."
+  # extensions are downloaded through the API, which needs a login
+  if ! gh auth status >/dev/null 2>&1; then
+    log_warn "gh is not logged in — run \`gh auth login\`, then \`dot gh\` to add gh-dash"
+  elif gh extension list | grep -q "dlvhdr/gh-dash"; then
+    log_ok "gh-dash (already installed)"
+  else
+    log_info "installing gh-dash..."
+    gh extension install dlvhdr/gh-dash
+  fi
+}
+
+upgrade() {
   gh extension upgrade dlvhdr/gh-dash
-fi
+}

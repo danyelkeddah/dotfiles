@@ -4,35 +4,40 @@
 
 export SECRETS_FILE="$HOME/.secrets.zsh"
 
+# upsert_secret <KEY> <value> — add or replace `export KEY="value"`
 upsert_secret() {
-  local key="$1"
-  local value="$2"
+  local key="$1" value="$2" action=added
 
   if grep -q "^export $key=" "$SECRETS_FILE"; then
-    if is_macos; then
-      sed -i '' "s|^export $key=.*|export $key=\"$value\"|" "$SECRETS_FILE"
-    else
-      sed -i "s|^export $key=.*|export $key=\"$value\"|" "$SECRETS_FILE"
-    fi
-    log_info "updated $key"
-  else
-    echo "export $key=\"$value\"" >> "$SECRETS_FILE"
-    log_info "added $key"
+    action=updated
+    drop_secret_line "$key"
   fi
+  echo "export $key=\"$value\"" >> "$SECRETS_FILE"
+  log_ok "$action $key"
 }
 
+# remove_secret <KEY>
 remove_secret() {
   local key="$1"
 
   if grep -q "^export $key=" "$SECRETS_FILE"; then
-    if is_macos; then
-      sed -i '' "/^export $key=.*/d" "$SECRETS_FILE"
-    else
-      sed -i "/^export $key=.*/d" "$SECRETS_FILE"
-    fi
-    log_info "removed $key"
+    drop_secret_line "$key"
+    log_ok "removed $key"
   else
     log_info "$key not found — skipping"
+  fi
+}
+
+# rewrite the file without KEY's line. Done with grep rather than `sed -i`,
+# whose syntax differs between macOS and Linux and which breaks on values
+# containing its delimiter. `cat >` keeps the file's permissions.
+drop_secret_line() {
+  local rest
+  rest="$(grep -v "^export $1=" "$SECRETS_FILE" || true)"
+  if [ -n "$rest" ]; then
+    printf '%s\n' "$rest" > "$SECRETS_FILE"
+  else
+    : > "$SECRETS_FILE"
   fi
 }
 

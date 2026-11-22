@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-DEPS=(homebrew)
+only_on macos
 
-if is_macos; then
-  log_info "installing fonts..."
-  brew install --cask \
+install() {
+  pkg_install --cask \
     font-jetbrains-mono \
     font-jetbrains-mono-nerd-font \
     font-fira-code \
@@ -19,4 +18,4 @@ if is_macos; then
     font-victor-mono-nerd-font \
     font-open-sans \
     font-monaspace
-fi
+}

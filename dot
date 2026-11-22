@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # dot — installs, upgrades and removes the packages in this repo.
 #
-# A package is a folder with a setup.sh. Two shapes are understood:
+# A package is a folder with a setup.sh that defines functions; dot calls the
+# one it needs:
 #
-#   new     setup.sh defines functions and dot calls the one it needs:
-#             install()  upgrade()  remove()  sync_secrets()  remove_secrets()
-#           only install() is required.
+#   install()  upgrade()  remove()  sync_secrets()  remove_secrets()
 #
-#   legacy  setup.sh is a plain script that installs when run. It can only be
-#           installed; secrets live in sync-secrets.sh / remove-secrets.sh.
+# Only install() is required. Code outside the functions runs every time the
+# file is loaded — that is where only_on and shared variables go.
 #
 # Written to run on bash 3.2 (stock macOS): no associative arrays, and no
 # expanding possibly-empty arrays under `set -u`.
@@ -26,11 +25,13 @@ source "$DOTS/_shared/pkg.sh"
 # puts on PATH.
 export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PNPM_HOME:$PNPM_HOME/bin:$PATH"
+# a freshly installed Homebrew (Apple Silicon keeps it outside the default PATH)
+[ -d /opt/homebrew/bin ] && export PATH="/opt/homebrew/bin:$PATH"
 
 export -f log_ok log_err log_info log_warn log_header \
-  is_macos is_arch is_ubuntu only_on \
-  symlink unlink_dot upsert_secret remove_secret \
-  as_root pkg_installed pkg_install apt_add_repo
+  only_on \
+  symlink unlink_dot upsert_secret remove_secret drop_secret_line \
+  as_root pkg_installed pkg_install apt_add_repo apt_add_ppa
 
 # These always run first on a full install, in this order.
 PREFLIGHT="homebrew packages"
@@ -84,10 +85,11 @@ selected_packages() {
   fi
 }
 
-is_new_style() { grep -q '^install()' "$DOTS/$1/setup.sh"; }
+has_fn() { grep -q "^$2()" "$DOTS/$1/setup.sh"; }
 
-# call_fn <package> <function> — run one function of a new-style package in its
-# own bash, so nothing a package sets or cd's into leaks into the next one.
+# call_fn <package> <function> — run one function of a package in its own
+# bash, so nothing a package sets or cd's into leaks into the next one.
+# The function stops at its first failing command.
 call_fn() {
   bash -c '
     set -eo pipefail
@@ -116,17 +118,18 @@ run_pkg() {
 
   log_header "$name"
 
-  if is_new_style "$name"; then
-    call_fn "$name" "$fn" || rc=$?
-  else
-    bash "$DOTS/$name/$fn" || rc=$?   # legacy: $fn is a script file name
-  fi
+  call_fn "$name" "$fn" || rc=$?
 
   secs=$((SECONDS - start))
   case "$rc" in
     0)             log_ok "$name · ${secs}s"; record "$name" ok "$secs" ;;
     "$RC_SKIPPED") record "$name" skipped "$secs" ;;   # only_on already said why
-    *)             log_err "$name failed · ${secs}s"; record "$name" failed "$secs"; return 1 ;;
+    *)
+      [ "$rc" = "$RC_NO_FN" ] && log_err "$name/setup.sh has no $fn()"
+      log_err "$name failed · ${secs}s"
+      record "$name" failed "$secs"
+      return 1
+      ;;
   esac
 }
 
@@ -156,11 +159,7 @@ install_pkg() {
   IN_PROGRESS="${IN_PROGRESS/ $name / }"
   COMPLETED="$COMPLETED$name "
 
-  if is_new_style "$name"; then
-    run_pkg "$name" install
-  else
-    run_pkg "$name" setup.sh
-  fi
+  run_pkg "$name" install
 }
 
 run_install() {
@@ -187,8 +186,6 @@ run_install() {
 }
 
 # ── upgrade / remove / secrets ────────────────────────────────────────────────
-
-has_fn() { is_new_style "$1" && grep -q "^$2()" "$DOTS/$1/setup.sh"; }
 
 # run_fn <function> <package>... — call one function in each package that has
 # it. A failure is recorded and the rest still run.
@@ -251,7 +248,7 @@ run_remove() {
     if has_fn "$name" remove; then
       removable="$removable $name"
     else
-      log_warn "$name has no remove() yet — nothing removed"
+      log_warn "$name has no remove() — nothing removed"
     fi
   done
   [ -n "$removable" ] || return 0
@@ -261,19 +258,6 @@ run_remove() {
     return 0
   fi
   run_fn remove $removable
-}
-
-# run_secrets <function> <legacy script> <package>...
-run_secrets() {
-  local fn="$1" script="$2" name
-  shift 2
-  for name in "$@"; do
-    if is_new_style "$name"; then
-      run_fn "$fn" "$name"
-    elif [ -f "$DOTS/$name/$script" ]; then
-      run_pkg "$name" "$script" || true
-    fi
-  done
 }
 
 run_update() {
@@ -418,10 +402,10 @@ case "$cmd" in
   remove)  run_remove "$@" ;;
   update)  run_update ;;
   --sync-secrets)
-    run_secrets sync_secrets sync-secrets.sh $(selected_packages "$@")
+    run_fn sync_secrets $(selected_packages "$@")
     ;;
   --remove-secrets)
-    run_secrets remove_secrets remove-secrets.sh $(selected_packages "$@")
+    run_fn remove_secrets $(selected_packages "$@")
     ;;
   --brew-dump)
     log_info "dumping brew state to Brewfile..."

@@ -111,14 +111,7 @@ fi
 
 export DOT_OS DOT_DISTRO DOT_PKG DOT_ARCH DOT_ENV DOT_ROOT
 
-# ── Checks ────────────────────────────────────────────────────────────────────
-
-# TEMPORARY: only the not-yet-converted setup.sh files use these. Converted
-# packages read DOT_OS / DOT_DISTRO or call only_on. Delete all three, and
-# their names in dot's `export -f`, once the last package is converted.
-is_macos()  { [ "$DOT_OS" = macos ]; }
-is_arch()   { [ "$DOT_DISTRO" = arch ]; }
-is_ubuntu() { [ "$DOT_DISTRO" = debian ]; }
+# ── only_on ───────────────────────────────────────────────────────────────────
 
 # only_on <word>... — skip this package unless the machine matches.
 #
