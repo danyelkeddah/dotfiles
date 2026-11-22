@@ -49,7 +49,7 @@ vim.pack.add({
     { src = 'https://github.com/echasnovski/mini.surround' },
     { src = 'https://github.com/folke/tokyonight.nvim' },
     { src = 'https://github.com/sainnhe/gruvbox-material' },
-    { src = 'http://github.com/fatih/vim-go' },
+    { src = 'https://github.com/fatih/vim-go' },
 })
 
 -- Update every managed plugin with `:PackUpdate`, or target specific plugins by passing

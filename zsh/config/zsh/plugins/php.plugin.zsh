@@ -1,6 +1,4 @@
 alias comp="composer"
 alias ci="composer install"
-alias psr1="php-cs-fixer fix --level=psr1"
-alias psr2="php-cs-fixer fix --level=psr2"
 alias tp="phpunit"
 alias tpf="phpunit --stop-on-failure"

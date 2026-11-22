@@ -26,12 +26,11 @@ export NVM_DIR="$HOME/.nvm"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 
-# pnpm
-export PNPM_HOME="/home/danyelkeddah/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME/bin:"*) ;;
-  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
-esac
-# pnpm end
+# go — only where it is installed, and only if GOBIN is actually set
+# (an empty entry in PATH means "the current directory")
 export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"
-export PATH="$(go env GOBIN):$PATH"
+if command -v go >/dev/null; then
+  gobin="$(go env GOBIN)"
+  [ -n "$gobin" ] && export PATH="$gobin:$PATH"
+  unset gobin
+fi
