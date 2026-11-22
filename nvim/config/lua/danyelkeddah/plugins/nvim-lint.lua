@@ -6,6 +6,9 @@ lint.linters_by_ft = {
     javascriptreact = { 'eslint_d' },
     typescriptreact = { 'eslint_d' },
     dockerfile = { 'hadolint' },
+    sql = { 'sqlfluff' },
+    mysql = { 'sqlfluff' },
+    plsql = { 'sqlfluff' },
     markdown = { 'markdownlint', 'typos' },
     terraform = { 'terraform_validate' },
     tf = { 'terraform_validate' },
@@ -13,9 +16,27 @@ lint.linters_by_ft = {
     text = { 'typos' },
 }
 
-vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'InsertLeave' }, {
+local sql_filetypes = { sql = true, mysql = true, plsql = true }
+local sqlfluff_config_files = { '.sqlfluff', 'pep8.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini' }
+
+vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'FileType', 'InsertLeave' }, {
     group = vim.api.nvim_create_augroup('nvim-lint', { clear = true }),
-    callback = function()
+    callback = function(event)
+        if sql_filetypes[vim.bo[event.buf].filetype] then
+            if event.event == 'InsertLeave' then
+                return
+            end
+
+            local config = vim.fs.find(sqlfluff_config_files, {
+                path = vim.fs.dirname(vim.api.nvim_buf_get_name(event.buf)),
+                upward = true,
+            })[1]
+            if config then
+                lint.try_lint('sqlfluff', { cwd = vim.fs.dirname(config) })
+            end
+            return
+        end
+
         lint.try_lint()
     end,
 })

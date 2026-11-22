@@ -58,4 +58,9 @@ map('n', 'gr', function() Snacks.picker.lsp_references() end, { desc = 'Referenc
 map('n', 'gI', function() Snacks.picker.lsp_implementations() end, { desc = 'Goto implementation' })
 map('n', 'gy', function() Snacks.picker.lsp_type_definitions() end, { desc = 'Goto type definition' })
 
+-- Symbols (JetBrains: File Structure = Ctrl+F12, Go to Symbol = Ctrl+Alt+Shift+N)
+map('n', '<leader>ss', function() Snacks.picker.lsp_symbols() end, { desc = 'Symbols in file' })
+map('n', '<leader>sS', function() Snacks.picker.lsp_workspace_symbols() end, { desc = 'Symbols in project' })
+map({ 'n', 'x' }, '<leader>sw', function() Snacks.picker.grep_word() end, { desc = 'Grep word under cursor / selection' })
+
 -- stylua: ignore end

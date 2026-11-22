@@ -4,7 +4,7 @@ vim.pack.add({
     { src = 'https://github.com/nvim-lua/plenary.nvim' },
     -- { src = 'https://github.com/tpope/vim-repeat' },
     { src = 'https://github.com/christoomey/vim-tmux-navigator' },
-    -- { src = 'https://github.com/tpope/vim-dotenv' },
+    { src = 'https://github.com/tpope/vim-dotenv' },
     -- { src = 'https://github.com/MunifTanjim/nui.nvim' },
     -- { src = 'https://github.com/ku1ik/vim-pasta' },
     { src = 'https://github.com/nvim-tree/nvim-web-devicons' },
@@ -27,6 +27,10 @@ vim.pack.add({
     { src = 'https://github.com/folke/lazydev.nvim' },
     { src = 'https://github.com/saghen/blink.cmp', version = vim.version.range('*') },
     { src = 'https://github.com/Kaiser-Yang/blink-cmp-git' },
+    { src = 'https://github.com/tpope/vim-dadbod' },
+    { src = 'https://github.com/kristijanhusak/vim-dadbod-ui' },
+    -- { src = 'https://github.com/kristijanhusak/vim-dadbod-completion' },
+    { src = 'https://github.com/danyelkeddah/vim-dadbod-completion', version = 'feature/embedded-sql-completion', name = 'vim-dadbod-completion' },
     { src = 'https://github.com/L3MON4D3/LuaSnip' },
     { src = 'https://github.com/lewis6991/gitsigns.nvim' },
     { src = 'https://github.com/williamboman/mason.nvim' },
@@ -45,6 +49,7 @@ vim.pack.add({
     { src = 'https://github.com/echasnovski/mini.surround' },
     { src = 'https://github.com/folke/tokyonight.nvim' },
     { src = 'https://github.com/sainnhe/gruvbox-material' },
+    { src = 'http://github.com/fatih/vim-go' },
 })
 
 -- Update every managed plugin with `:PackUpdate`, or target specific plugins by passing
@@ -86,6 +91,7 @@ require('danyelkeddah.plugins.undotree')
 require('danyelkeddah.plugins.snacks')
 require('danyelkeddah.plugins.lazydev')
 require('danyelkeddah.plugins.blink-cmp')
+require('danyelkeddah.plugins.vim-dadbod')
 require('danyelkeddah.plugins.gitsigns')
 require('danyelkeddah.plugins.mason')
 require('danyelkeddah.plugins.fidget')

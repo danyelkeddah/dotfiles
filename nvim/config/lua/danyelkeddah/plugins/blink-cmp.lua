@@ -36,12 +36,16 @@ require('blink.cmp').setup({
     },
     signature = { enabled = true },
     sources = {
-        default = { 'lsp', 'path', 'snippets', 'buffer' },
+        default = { 'lsp', 'path', 'snippets', 'buffer', 'dadbod' },
         per_filetype = {
             gitcommit = { 'git', 'buffer' },
+            sql = { 'lsp', 'path', 'snippets', 'buffer', 'dadbod' },
+            mysql = { 'lsp', 'path', 'snippets', 'buffer', 'dadbod' },
+            plsql = { 'lsp', 'path', 'snippets', 'buffer', 'dadbod' },
         },
         providers = {
             git = { module = 'blink-cmp-git', name = 'Git' },
+            dadbod = { module = 'vim_dadbod_completion.blink', name = 'Dadbod' },
         },
     },
     completion = {
