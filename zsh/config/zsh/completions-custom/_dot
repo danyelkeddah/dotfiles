@@ -1,0 +1,75 @@
+#compdef dot
+# Tab completion for dot.
+#
+#   dot <TAB>              commands and package names
+#   dot -<TAB>             options
+#   dot upgrade <TAB>      only packages that have an upgrade()
+#   dot remove <TAB>       only packages that have a remove()
+#   dot --sync-secrets <TAB>   only packages that have secrets
+#
+# Package names are read from the repo each time, so a new package shows up
+# without touching this file.
+
+# offer the packages whose setup.sh defines the given function, leaving out
+# the ones already on the command line
+_dot_packages() {
+  local fn=$1 dots=${DOTFILES:-$HOME/.dotfiles} file
+  local -a names
+
+  for file in $dots/*/setup.sh(N); do
+    grep -q "^$fn()" $file && names+=(${file:h:t})
+  done
+  names=(${names:|words})
+
+  _describe -t packages 'package' names
+}
+
+_dot() {
+  local -a commands options
+  commands=(
+    'install:install packages (what dot does when no command is given)'
+    'upgrade:upgrade the system, then each package'
+    'remove:undo the config of a package (does not uninstall software)'
+    'update:pull the dotfiles, then install everything again'
+  )
+  options=(
+    '--yes:do not ask which packages or "are you sure"'
+    '-y:do not ask which packages or "are you sure"'
+    '--list:list available packages'
+    '--facts:show what dot detected about this machine'
+    '--sync-secrets:sync secrets from 1Password'
+    '--remove-secrets:remove synced secrets'
+    '--brew-dump:dump installed brew packages to the Brewfile'
+    '--brew-cleanup:remove brew packages that are not in the Brewfile'
+    '--help:show usage'
+  )
+
+  # the command is the first word after `dot` that is not -y / --yes
+  local command="" word
+  for word in ${words[2,CURRENT-1]}; do
+    [[ $word == (-y|--yes) ]] && continue
+    command=$word
+    break
+  done
+
+  if [[ -z $command ]]; then
+    if [[ $PREFIX == -* ]]; then
+      _describe -t options 'option' options
+    else
+      _describe -t commands 'command' commands
+      _dot_packages install
+    fi
+    return
+  fi
+
+  case $command in
+    upgrade)          _dot_packages upgrade ;;
+    remove)           _dot_packages remove ;;
+    --sync-secrets)   _dot_packages sync_secrets ;;
+    --remove-secrets) _dot_packages remove_secrets ;;
+    update|--list|--facts|--help|-h|--brew-dump|--brew-cleanup) ;;   # take no arguments
+    *)                _dot_packages install ;;   # `dot install <TAB>` and `dot tmux <TAB>`
+  esac
+}
+
+_dot "$@"
