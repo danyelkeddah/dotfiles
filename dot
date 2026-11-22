@@ -1,190 +1,334 @@
 #!/usr/bin/env bash
+# dot — installs, upgrades and removes the packages in this repo.
+#
+# A package is a folder with a setup.sh. Two shapes are understood:
+#
+#   new     setup.sh defines functions and dot calls the one it needs:
+#             install()  upgrade()  remove()  sync_secrets()  remove_secrets()
+#           only install() is required.
+#
+#   legacy  setup.sh is a plain script that installs when run. It can only be
+#           installed; secrets live in sync-secrets.sh / remove-secrets.sh.
+#
+# Written to run on bash 3.2 (stock macOS): no associative arrays, and no
+# expanding possibly-empty arrays under `set -u`.
 set -euo pipefail
 
-export DOT_RUNNER=1
 export DOTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-filter="*"
 
 source "$DOTS/_shared/os.sh"
+source "$DOTS/_shared/platform.sh"
 
-# ensure secrets file exists so any package can safely reference it
-# populated later
-[ -f "$SECRETS_FILE" ] || touch "$SECRETS_FILE"
-chmod 600 "$SECRETS_FILE"
+export -f log_ok log_err log_info log_warn log_header \
+  is_macos is_arch is_ubuntu only_on \
+  symlink upsert_secret remove_secret
 
-export -f log_ok log_err log_info log_warn log_header is_macos is_arch is_ubuntu symlink upsert_secret remove_secret
+# These always run first on a full install, in this order.
+PREFLIGHT="homebrew packages"
 
-COMPLETED=()
+# Space-padded name lists, e.g. " homebrew tmux ".
+COMPLETED=" "
+IN_PROGRESS=" "
+FAILED=" "
 
-get_packages() {
-  find "$DOTS" \
-    -maxdepth 2 \
-    -mindepth 2 \
-    -path "*/$filter*/setup.sh" \
-    | grep -v "$DOTS/_shared/" \
-    | sed 's|/setup.sh||' \
-    | sort
+# Exit codes a package can hand back besides 0 (ok) and "anything else" (failed).
+RC_SKIPPED=100   # only_on said this machine doesn't qualify
+RC_NO_FN=101     # the package doesn't define the requested function
+
+# ── Packages ──────────────────────────────────────────────────────────────────
+
+# every package name, preflight first, then alphabetical
+all_packages() {
+  local name file
+  for name in $PREFLIGHT; do
+    [ -f "$DOTS/$name/setup.sh" ] && echo "$name"
+  done
+  for file in "$DOTS"/*/setup.sh; do
+    [ -f "$file" ] || continue
+    name="$(basename "$(dirname "$file")")"
+    [[ " $PREFLIGHT " == *" $name "* ]] || echo "$name"
+  done
 }
 
-get_secret_scripts() {
-  local script="$1"
-  find "$DOTS" \
-    -maxdepth 2 \
-    -mindepth 2 \
-    -name "$script" \
-    -path "*/$filter*/$script" \
-    | grep -v "$DOTS/_shared/" \
-    | sort
-}
-
-run_pkg() {
-  local dir="$1"
+# stop before doing anything if a name on the command line isn't a package
+check_names() {
   local name
-  name="$(basename "$dir")"
+  for name in "$@"; do
+    if [ ! -f "$DOTS/$name/setup.sh" ]; then
+      log_err "unknown package: $name (see: dot --list)"
+      exit 1
+    fi
+  done
+}
 
-  if [[ " ${COMPLETED[*]} " == *" $name "* ]]; then
-    return 0  # silent — parent will print the skipping notice
+# the names given on the command line, or every package when none were given
+selected_packages() {
+  if [ $# -eq 0 ]; then
+    all_packages
+  else
+    printf '%s\n' "$@"
+  fi
+}
+
+is_new_style() { grep -q '^install()' "$DOTS/$1/setup.sh"; }
+
+# call_fn <package> <function> — run one function of a new-style package in its
+# own bash, so nothing a package sets or cd's into leaks into the next one.
+call_fn() {
+  bash -c '
+    set -eo pipefail
+    source "$1"
+    declare -F "$2" >/dev/null || exit '"$RC_NO_FN"'
+    "$2"
+  ' _ "$DOTS/$1/setup.sh" "$2"
+}
+
+deps_of() {
+  local line
+  line="$(grep '^DEPS=' "$DOTS/$1/setup.sh" 2>/dev/null | head -1 || true)"
+  [ -n "$line" ] || return 0
+  echo "$line" | sed 's/^DEPS=(\(.*\)).*/\1/'
+}
+
+# ── install ───────────────────────────────────────────────────────────────────
+
+install_pkg() {
+  local name="$1" dep rc=0
+
+  [[ "$COMPLETED" == *" $name "* ]] && return 0
+
+  if [ ! -f "$DOTS/$name/setup.sh" ]; then
+    log_err "unknown package: $name"
+    return 1
   fi
 
-  IN_PROGRESS+=("$name")
+  IN_PROGRESS="$IN_PROGRESS$name "
 
-  local deps=()
-  local deps_line
-  deps_line=$(grep "^DEPS=" "$dir/setup.sh" 2>/dev/null | head -1 || true)
-  if [ -n "$deps_line" ]; then
-    read -ra deps <<< "$(echo "$deps_line" | sed 's/^DEPS=(\(.*\))/\1/')"
-  fi
-
-  # pass 1 — run deps that haven't completed yet (before header, with own headers)
-  for dep in "${deps[@]}"; do
-    if [[ " ${IN_PROGRESS[*]} " == *" $dep "* ]]; then
+  # dependencies first, each under its own header
+  for dep in $(deps_of "$name"); do
+    if [[ "$IN_PROGRESS" == *" $dep "* ]]; then
       log_err "circular dep detected: $name → $dep"
       exit 1
     fi
-    if [[ " ${COMPLETED[*]} " != *" $dep "* ]]; then
-      run_pkg "$DOTS/$dep"
-    fi
+    install_pkg "$dep"
   done
 
   log_header "$name"
 
-  # pass 2 — list already-done deps as skipping notices under this header
-  for dep in "${deps[@]}"; do
-    if [[ " ${COMPLETED[*]} " == *" $dep "* ]]; then
-      log_ok "$dep (already done — skipping)"
+  IN_PROGRESS="${IN_PROGRESS/ $name / }"
+  COMPLETED="$COMPLETED$name "
+
+  if is_new_style "$name"; then
+    call_fn "$name" install || rc=$?
+  else
+    bash "$DOTS/$name/setup.sh" || rc=$?
+  fi
+
+  case "$rc" in
+    0)             log_ok "$name done" ;;
+    "$RC_SKIPPED") ;;   # only_on already said why
+    *)             log_err "$name failed"; return 1 ;;
+  esac
+}
+
+run_install() {
+  local name
+  # a handful of named packages still need brew to exist on a fresh Mac
+  [ $# -gt 0 ] && [ -f "$DOTS/homebrew/setup.sh" ] && install_pkg homebrew
+  for name in $(selected_packages "$@"); do
+    install_pkg "$name"
+  done
+}
+
+# ── upgrade / remove / secrets ────────────────────────────────────────────────
+
+# run_fn <function> <package>... — call one function in each package that has it
+run_fn() {
+  local fn="$1" name rc
+  shift
+  for name in "$@"; do
+    is_new_style "$name" || continue
+    grep -q "^$fn()" "$DOTS/$name/setup.sh" || continue
+
+    log_header "$name"
+    rc=0
+    call_fn "$name" "$fn" || rc=$?
+    case "$rc" in
+      0)             log_ok "$name done" ;;
+      "$RC_SKIPPED") ;;
+      *)             log_err "$name failed"; FAILED="$FAILED$name " ;;
+    esac
+  done
+}
+
+as_root() {
+  if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi
+}
+
+system_upgrade() {
+  log_header "system"
+  if [ "$DOT_PKG" != brew ] && [ "$DOT_ROOT" = no ]; then
+    log_warn "no root access — skipping system upgrade"
+    return 0
+  fi
+  case "$DOT_PKG" in
+    brew)   brew update && brew upgrade ;;
+    apt)    as_root apt-get update && as_root apt-get upgrade -y ;;
+    pacman) as_root pacman -Syu --noconfirm ;;
+    dnf)    as_root dnf upgrade -y ;;
+    *)      log_warn "no known package manager — skipping system upgrade"; return 0 ;;
+  esac
+  log_ok "system done"
+}
+
+run_upgrade() {
+  # the whole system only when no package was named
+  [ $# -eq 0 ] && system_upgrade
+  run_fn upgrade $(selected_packages "$@")
+}
+
+run_remove() {
+  if [ $# -eq 0 ]; then
+    log_err "remove needs at least one package name"
+    exit 1
+  fi
+  local name
+  for name in $(selected_packages "$@"); do
+    if ! is_new_style "$name" || ! grep -q '^remove()' "$DOTS/$name/setup.sh"; then
+      log_warn "$name has no remove() yet — nothing removed"
     fi
   done
-
-  COMPLETED+=("$name")
-  IN_PROGRESS=("${IN_PROGRESS[@]/$name}")
-
-  if ! bash "$dir/setup.sh"; then
-    log_err "$name failed"
-    return 1
-  fi
-  log_ok "$name done"
+  run_fn remove $(selected_packages "$@")
 }
 
-run_packages() {
-  while IFS= read -r pkg; do
-    run_pkg "$pkg"
-  done < <(get_packages)
+# run_secrets <function> <legacy script> <package>...
+run_secrets() {
+  local fn="$1" script="$2" name
+  shift 2
+  for name in "$@"; do
+    if is_new_style "$name"; then
+      run_fn "$fn" "$name"
+    elif [ -f "$DOTS/$name/$script" ]; then
+      log_header "$name"
+      if bash "$DOTS/$name/$script"; then
+        log_ok "$name done"
+      else
+        log_err "$name failed"
+        FAILED="$FAILED$name "
+      fi
+    fi
+  done
 }
+
+run_update() {
+  log_header "dotfiles"
+  git -C "$DOTS" pull --ff-only
+  log_ok "dotfiles up to date"
+  # start again so the freshly pulled dot does the installing
+  exec "$DOTS/dot" install
+}
+
+# ── info ──────────────────────────────────────────────────────────────────────
 
 list_packages() {
+  local name
   echo "Available packages:"
-  while IFS= read -r pkg; do
-    echo " • $(basename "$pkg")"
-  done < <(get_packages)
+  for name in $(all_packages); do
+    echo " • $name"
+  done
 }
 
-run_sync_secrets() {
-  while IFS= read -r pkg; do
-    [ -f "$pkg/sync-secrets.sh" ] || continue
-    local name
-    name="$(basename "$pkg")"
-    log_header "$name"
-    if ! bash "$pkg/sync-secrets.sh"; then
-      log_err "$name failed"
-      return 1
-    fi
-    log_ok "$name done"
-  done < <(get_packages)
+show_facts() {
+  echo "os          $DOT_OS"
+  echo "distro      $DOT_DISTRO"
+  echo "system pkg  $DOT_PKG"
+  echo "arch        $DOT_ARCH"
+  echo "env         $DOT_ENV"
+  echo "root        $DOT_ROOT"
+  echo "bash        $BASH_VERSION"
+  echo "dots        $DOTS"
 }
 
-run_remove_secrets() {
-  while IFS= read -r pkg; do
-    [ -f "$pkg/remove-secrets.sh" ] || continue
-    local name
-    name="$(basename "$pkg")"
-    log_header "$name"
-    if ! bash "$pkg/remove-secrets.sh"; then
-      log_err "$name failed"
-      return 1
-    fi
-    log_ok "$name done"
-  done < <(get_packages)
+show_help() {
+  cat <<'EOF'
+Usage: dot [command] [package...]
+
+  dot                      install every package
+  dot tmux zsh             install specific packages
+  dot install [package...] same as above
+  dot update               pull this repo, then install everything again
+  dot upgrade              upgrade the system's packages, then each package
+  dot upgrade tmux         upgrade one package only (no system upgrade)
+  dot remove tmux          undo a package's config (does not uninstall software)
+
+  dot --list               list available packages
+  dot --facts              show what dot detected about this machine
+  dot --sync-secrets [package...]    sync secrets from 1Password
+  dot --remove-secrets [package...]  remove synced secrets
+  dot --brew-dump          dump installed brew packages to Brewfile
+  dot --brew-cleanup       remove packages not in Brewfile
+  dot --help               this text
+
+EOF
+  list_packages
 }
 
-case "${1:-}" in
-  --list)          list_packages;  exit 0 ;;
+# secrets file must exist so any package can safely reference it
+ensure_secrets_file() {
+  [ -f "$SECRETS_FILE" ] || touch "$SECRETS_FILE"
+  chmod 600 "$SECRETS_FILE"
+}
+
+finish() {
+  if [ "$FAILED" != " " ]; then
+    log_err "failed:$FAILED"
+    exit 1
+  fi
+}
+
+# ── main ──────────────────────────────────────────────────────────────────────
+
+cmd="${1:-install}"
+case "$cmd" in
+  --help|-h) show_help;     exit 0 ;;
+  --list)    list_packages; exit 0 ;;
+  --facts)   show_facts;    exit 0 ;;
+esac
+
+ensure_secrets_file
+
+# drop the command word; what is left are package names
+case "$cmd" in
+  install|upgrade|remove|update|-*) [ $# -gt 0 ] && shift ;;
+esac
+check_names "$@"
+
+case "$cmd" in
+  install) run_install "$@" ;;
+  upgrade) run_upgrade "$@" ;;
+  remove)  run_remove "$@" ;;
+  update)  run_update ;;
   --sync-secrets)
-  if [ -z "${2:-}" ]; then
-    filter="*"
-    run_sync_secrets
-  else
-    for arg in "${@:2}"; do
-      filter="$arg"
-      run_sync_secrets
-    done
-  fi
-  exit 0
-  ;;
---remove-secrets)
-  if [ -z "${2:-}" ]; then
-    filter="*"
-    run_remove_secrets
-  else
-    for arg in "${@:2}"; do
-      filter="$arg"
-      run_remove_secrets
-    done
-  fi
-  exit 0
-  ;;
+    run_secrets sync_secrets sync-secrets.sh $(selected_packages "$@")
+    ;;
+  --remove-secrets)
+    run_secrets remove_secrets remove-secrets.sh $(selected_packages "$@")
+    ;;
   --brew-dump)
     log_info "dumping brew state to Brewfile..."
     brew bundle dump --force --file="$DOTS/packages/config/Brewfile"
     log_ok "Brewfile updated at $DOTS/packages/config/Brewfile"
-    exit 0
     ;;
   --brew-cleanup)
     log_info "removing packages not in Brewfile..."
     brew bundle cleanup --force --file="$DOTS/packages/config/Brewfile"
     log_ok "cleanup done"
-    exit 0
     ;;
-  --help)
-    echo "Usage: dot [package...] [--list] [--sync-secrets] [--brew-dump] [--brew-cleanup] [--help]"
-    echo ""
-    echo "  dot                    → run all packages"
-    echo "  dot tmux zsh           → run specific packages"
-    echo "  dot --list             → list available packages"
-    echo "  dot --sync-secrets     → sync secrets from 1Password"
-    echo "  dot --brew-dump        → dump installed brew packages to Brewfile"
-    echo "  dot --brew-cleanup     → remove packages not in Brewfile"
-    list_packages
-    exit 0
+  -*)
+    log_err "unknown option: $cmd (see: dot --help)"
+    exit 1
     ;;
-    *)
-    if [ $# -eq 0 ]; then
-      run_packages
-    else
-      for arg in "$@"; do
-        filter="$arg"
-        run_packages
-      done
-    fi
-    ;;
+  *) run_install "$@" ;;
 esac
 
+finish
