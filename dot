@@ -21,10 +21,16 @@ source "$DOTS/_shared/os.sh"
 source "$DOTS/_shared/platform.sh"
 source "$DOTS/_shared/pkg.sh"
 
+# Tools one package installs must be findable by the next one in the same run,
+# before any shell has been restarted. Same places zsh/config/zsh/config/path.zsh
+# puts on PATH.
+export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PNPM_HOME:$PNPM_HOME/bin:$PATH"
+
 export -f log_ok log_err log_info log_warn log_header \
   is_macos is_arch is_ubuntu only_on \
   symlink unlink_dot upsert_secret remove_secret \
-  as_root pkg_installed pkg_install
+  as_root pkg_installed pkg_install apt_add_repo
 
 # These always run first on a full install, in this order.
 PREFLIGHT="homebrew packages"

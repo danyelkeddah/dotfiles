@@ -1,17 +1,31 @@
-#!/usr/bin/env
-DEPS=(homebrew php)
+#!/usr/bin/env bash
+DEPS=(php)
 
-if ! command -v phpactor &>/dev/null; then
+BIN="$HOME/.local/bin/phpactor"
+
+phpactor_download() {
   log_info "downloading phpactor..."
-  curl -fLo /tmp/phpactor.phar \
+  mkdir -p "$(dirname "$BIN")"
+  curl -fLo "$BIN.new" \
     "https://github.com/phpactor/phpactor/releases/latest/download/phpactor.phar"
-  chmod +x /tmp/phpactor.phar
-  mkdir -p "$HOME/.local/bin"
-  mv /tmp/phpactor.phar "$HOME/.local/bin/phpactor"
-  log_ok "phpactor installed"
-else
-  log_info "phpactor already installed — skipping"
-fi
+  chmod +x "$BIN.new"
+  mv "$BIN.new" "$BIN"
+}
 
-log_info "symlinking phpactor config..."
-symlink "$DOTS/phpactor/config" "$HOME/.config/phpactor"
+install() {
+  if command -v phpactor >/dev/null; then
+    log_ok "phpactor (already installed)"
+  else
+    phpactor_download
+  fi
+
+  symlink "$DOTS/phpactor/config" "$HOME/.config/phpactor"
+}
+
+upgrade() {
+  phpactor_download
+}
+
+remove() {
+  unlink_dot "$HOME/.config/phpactor"
+}

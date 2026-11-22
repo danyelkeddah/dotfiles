@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
-DEPS=(homebrew packages)
+# gum draws dot's own picker, yes/no questions and summary table
 
-if ! command -v gum &>/dev/null; then
-  log_info "installing gum..."
-  if is_macos; then
-    brew install gum
-  elif is_arch; then
-    sudo pacman -S --needed --noconfirm gum
-  elif is_ubuntu; then
-    sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://repo.charm.sh/apt/gpg.key \
-      | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" \
-      | sudo tee /etc/apt/sources.list.d/charm.list
-    sudo apt update
-    sudo apt install -y gum
-  fi
-else
-  log_info "gum already installed — skipping"
-fi
+install() {
+  case "$DOT_PKG" in
+    apt)
+      # not in Debian/Ubuntu's own repos — comes from Charm's
+      pkg_installed gum \
+        || apt_add_repo charm https://repo.charm.sh/apt/gpg.key "https://repo.charm.sh/apt/ * *"
+      pkg_install gum
+      ;;
+    dnf)
+      log_warn "gum on Fedora needs Charm's yum repo, which this package doesn't set up"
+      log_warn "see https://github.com/charmbracelet/gum#installation"
+      ;;
+    *)
+      pkg_install gum
+      ;;
+  esac
+}

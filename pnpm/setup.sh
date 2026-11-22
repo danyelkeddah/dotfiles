@@ -1,23 +1,30 @@
 #!/usr/bin/env bash
 
-# Standalone installer works on macOS (Apple Silicon) and Linux (glibc 2.27+)
-# without requiring Node.js. Windows isn't covered — use the PowerShell
-# installer or winget there. Self-update an existing install with `pnpm self-update`.
-# https://pnpm.io/installation
+# pnpm keeps its global config in a different place on each OS
+case "$DOT_OS" in
+  macos) CONFIG="$HOME/Library/Preferences/pnpm/config.yaml" ;;
+  *)     CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/pnpm/config.yaml" ;;
+esac
 
-if ! command -v pnpm &>/dev/null; then
-  log_info "installing pnpm via standalone installer..."
-  curl -fsSL https://get.pnpm.io/install.sh | sh -
-  log_warn "installer ran \`pnpm setup\` and appended PNPM_HOME exports to your shell rc;"
-  log_warn "path.zsh already manages this — review and discard duplicates with \`git -C \$DOTS status\`."
-else
-  log_info "pnpm already installed — skipping (run \`pnpm self-update\` to update)"
-fi
+install() {
+  if command -v pnpm >/dev/null; then
+    log_ok "pnpm (already installed)"
+  else
+    # The standalone installer needs no Node.js.
+    # https://pnpm.io/installation
+    log_info "installing pnpm via standalone installer..."
+    curl -fsSL https://get.pnpm.io/install.sh | sh -
+    log_warn "installer ran \`pnpm setup\` and appended PNPM_HOME exports to your shell rc;"
+    log_warn "path.zsh already manages this — review and discard duplicates with \`git -C \$DOTS status\`."
+  fi
 
-# Global config lives under different paths per OS in pnpm 11.
-log_info "symlinking pnpm config..."
-if is_macos; then
-  symlink "$DOTS/pnpm/config/config.yaml" "$HOME/Library/Preferences/pnpm/config.yaml"
-else
-  symlink "$DOTS/pnpm/config/config.yaml" "${XDG_CONFIG_HOME:-$HOME/.config}/pnpm/config.yaml"
-fi
+  symlink "$DOTS/pnpm/config/config.yaml" "$CONFIG"
+}
+
+upgrade() {
+  pnpm self-update
+}
+
+remove() {
+  unlink_dot "$CONFIG"
+}

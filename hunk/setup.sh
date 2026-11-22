@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
-DEPS=(homebrew packages pnpm)
+DEPS=(pnpm)
 
-if ! command -v hunk &>/dev/null; then
-  log_info "installing hunk..."
-  pnpm add -g hunkdiff
-else
-  log_info "hunk already installed — skipping"
-fi
+install() {
+  if command -v hunk >/dev/null; then
+    log_ok "hunk (already installed)"
+  else
+    log_info "installing hunk..."
+    pnpm add -g hunkdiff
+  fi
 
-log_info "symlinking hunk config..."
-symlink "$DOTS/hunk/config/config.toml" "$HOME/.config/hunk/config.toml"
+  symlink "$DOTS/hunk/config/config.toml" "$HOME/.config/hunk/config.toml"
+}
+
+upgrade() {
+  pnpm add -g hunkdiff@latest
+}
+
+remove() {
+  unlink_dot "$HOME/.config/hunk/config.toml"
+}

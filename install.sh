@@ -58,8 +58,9 @@ elif [ -n "$missing" ]; then
     as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates $missing
   elif have pacman; then
     # shellcheck disable=SC2086
+    # no (or a stale) package database: Arch only supports a full upgrade here
     as_root pacman -S --needed --noconfirm $missing \
-      || as_root pacman -Sy --needed --noconfirm $missing   # no package database yet
+      || as_root pacman -Syu --needed --noconfirm $missing
   elif have dnf; then
     # shellcheck disable=SC2086
     as_root dnf install -y $missing

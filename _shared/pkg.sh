@@ -88,16 +88,58 @@ pkg_install() {
       as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y $missing
       ;;
     pacman)
-      # -Sy without -u is avoided on purpose (it can leave a half-upgraded
-      # system), so the database is only refreshed when a plain install fails —
-      # e.g. on a fresh machine that has no database yet
+      # A plain install fails when the local package database is missing or
+      # older than the mirrors. Arch only supports fixing that with a full
+      # upgrade (-Syu): refreshing the database alone (-Sy) and then installing
+      # leaves a half-upgraded system with broken library dependencies.
       as_root pacman -S --needed --noconfirm $missing || {
-        log_info "refreshing package database and retrying..."
-        as_root pacman -Sy --needed --noconfirm $missing
+        log_info "package database is out of date — upgrading the system, then retrying..."
+        as_root pacman -Syu --needed --noconfirm $missing
       }
       ;;
     dnf)
       as_root dnf install -y $missing
       ;;
   esac
+}
+
+# apt_add_repo <name> <key url> <repo line>
+#
+#   apt_add_repo charm https://repo.charm.sh/apt/gpg.key "https://repo.charm.sh/apt/ * *"
+#
+# Adds a third-party apt repository: saves its signing key under
+# /etc/apt/keyrings and writes /etc/apt/sources.list.d/<name>.list. The repo
+# line is what follows `deb [...]`: the URL, suite and components.
+# Does nothing if the repo is already there, and only warns without root.
+apt_add_repo() {
+  local name="$1" key_url="$2" line="$3"
+  local list="/etc/apt/sources.list.d/$name.list" key tmp
+
+  if [ -f "$list" ]; then
+    log_ok "$name apt repo (already added)"
+    return 0
+  fi
+  if [ "$DOT_ROOT" = no ]; then
+    log_warn "no root access — $name apt repo not added"
+    return 0
+  fi
+
+  log_info "adding $name apt repo..."
+  tmp="$(mktemp)"
+  curl -fsSL "$key_url" -o "$tmp"
+  # apt tells the two key formats apart by file extension
+  if grep -q 'BEGIN PGP' "$tmp"; then key="/etc/apt/keyrings/$name.asc"
+  else                                key="/etc/apt/keyrings/$name.gpg"
+  fi
+  # (not `install -D`: inside a package, `install` is the package's function)
+  as_root mkdir -p /etc/apt/keyrings
+  as_root cp "$tmp" "$key"
+  as_root chmod 0644 "$key"
+  rm -f "$tmp"
+
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=$key] $line" \
+    | as_root tee "$list" >/dev/null
+
+  # the package lists must be read again to see the new repo
+  rm -f "$DOT_RUN_DIR/apt-updated"
 }

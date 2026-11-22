@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
-DEPS=(homebrew packages)
+install() {
+  if command -v claude >/dev/null; then
+    log_ok "claude (already installed)"
+  else
+    log_info "installing claude code..."
+    curl -fsSL https://claude.ai/install.sh | bash
+  fi
+}
 
-if ! command -v claude &>/dev/null; then
-  log_info "installing claude code..."
-  curl -fsSL https://claude.ai/install.sh | bash
-else
-  log_info "claude already installed — skipping"
-fi
+upgrade() {
+  claude update
+}

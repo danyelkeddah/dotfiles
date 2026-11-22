@@ -1,10 +1,20 @@
-# bin/setup.sh
-log_info "symlinking bin scripts..."
-mkdir -p "$HOME/.local/bin"
+#!/usr/bin/env bash
+# my own scripts, linked into ~/.local/bin
 
+BIN="$HOME/.local/bin"
 
-# symlink bin scripts
-for script in "$DOTS/bin/scripts/"*; do
-  chmod +x "$script"
-  symlink "$script" "$HOME/.local/bin/$(basename "$script")"
-done
+install() {
+  local script
+  mkdir -p "$BIN"
+  for script in "$DOTS/bin/scripts/"*; do
+    chmod +x "$script"
+    symlink "$script" "$BIN/$(basename "$script")"
+  done
+}
+
+remove() {
+  local script
+  for script in "$DOTS/bin/scripts/"*; do
+    unlink_dot "$BIN/$(basename "$script")"
+  done
+}
