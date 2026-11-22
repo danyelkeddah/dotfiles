@@ -25,3 +25,13 @@ export NVM_DIR="$HOME/.nvm"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
+
+# pnpm
+export PNPM_HOME="/home/danyelkeddah/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+esac
+# pnpm end
+export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"
+export PATH="$(go env GOBIN):$PATH"
